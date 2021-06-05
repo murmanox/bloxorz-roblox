@@ -1,0 +1,235 @@
+import { Janitor } from "@rbxts/janitor"
+import Make from "@rbxts/make"
+import { Debris, RunService, Workspace } from "@rbxts/services"
+import { Math, roundTo } from "shared/utility/math"
+import { v3, Vector3Math } from "shared/utility/vector3-utils"
+import type { Game } from "./game"
+
+function makePart(position: Vector3, size: Vector3) {
+	return Make("Part", {
+		Parent: Workspace,
+		Position: position,
+		Anchored: true,
+		Size: size,
+		CanCollide: true,
+		Material: Enum.Material.SmoothPlastic,
+	})
+}
+
+enum Rotation {
+	Standing = "standing",
+	Left = "left",
+	Up = "up",
+}
+
+const rotation_vector3_map = {
+	[Rotation.Standing]: v3.up,
+	[Rotation.Left]: v3.right, // I guess I could rename it to Rotation.Right
+	[Rotation.Up]: v3.forward,
+}
+
+function getInitialRotation(positions: Vector3[]): Rotation {
+	const all_x_equal = positions.map((v) => v.X).every((x, _, arr) => x === arr[0])
+	const all_y_equal = positions.map((v) => v.Y).every((y, _, arr) => y === arr[0])
+	const all_z_equal = positions.map((v) => v.Z).every((z, _, arr) => z === arr[0])
+
+	// print(`X: ${is_x_equal}, Y: ${is_y_equal}, Z: ${is_z_equal}`)
+	if (!all_x_equal) return Rotation.Left
+	if (!all_y_equal) return Rotation.Standing
+	if (!all_z_equal) return Rotation.Up
+
+	return Rotation.Standing
+}
+
+const x_rotation = Math.HALF_PI
+const z_rotation = -Math.HALF_PI
+const rotation_speed = math.rad(360) // per second
+
+export class Block {
+	public positions: Vector3[]
+	public rotation: Rotation
+	public length: number
+
+	private janitor = new Janitor<{ rotation: RBXScriptConnection }>()
+	private instance: BasePart
+	private is_rotating = false
+
+	constructor(positions: Vector3[]) {
+		// check that all positions are of uniform distance apart
+
+		// check direction parts are moving to get starter rotation
+		this.rotation = getInitialRotation(positions)
+		this.positions = positions
+		this.length = positions.size()
+
+		// average position of all block positions
+		const position = this.positions
+			.reduce((total, current) => total.add(current), v3.zero)
+			.div(this.positions.size())
+
+		const length = rotation_vector3_map[this.rotation].mul(this.length)
+		const size = new Vector3(math.max(length.X, 1), math.max(length.Y, 1), math.max(length.Z, 1))
+		const instance = makePart(position, size)
+
+		this.instance = this.janitor.Add(instance)
+	}
+
+	public move(direction: Vector3) {
+		if (this.is_rotating) return
+		// very basic checking, maybe do more later
+		if (direction.Magnitude !== 1) return
+
+		const block_z_offset =
+			this.rotation === Rotation.Up ? (this.length * direction.Z) / 2 : direction.Z / 2
+
+		const block_x_offset =
+			this.rotation === Rotation.Left ? (this.length * direction.X) / 2 : direction.X / 2
+
+		const block_offset = new Vector3(block_x_offset, -0.5, block_z_offset)
+		const rotation_point = this.getPosition().add(block_offset)
+
+		// rotate all vectors around rotation_point with given direction on each axis
+		this.positions = this.positions.map((position) => {
+			const v = Vector3Math.rotateXYZ(
+				position,
+				x_rotation * direction.Z,
+				0,
+				z_rotation * direction.X,
+				rotation_point
+			)
+
+			return new Vector3(roundTo(v.X, 5), roundTo(v.Y, 5), roundTo(v.Z, 5))
+		})
+
+		// rotate instance around rotation point
+		this.rotateBlock(direction, rotation_point)
+
+		// update rotation
+		switch (this.rotation) {
+			case Rotation.Left:
+				if (direction === v3.left || direction === v3.right) {
+					this.rotation = Rotation.Standing
+				}
+				break
+
+			case Rotation.Up:
+				if (direction === v3.forward || direction === v3.back) {
+					this.rotation = Rotation.Standing
+				}
+				break
+
+			case Rotation.Standing:
+				if (direction === v3.forward || direction === v3.back) {
+					this.rotation = Rotation.Up
+				} else {
+					this.rotation = Rotation.Left
+				}
+				break
+		}
+	}
+
+	private rotateBlock(direction: Vector3, rotation_point: Vector3) {
+		this.is_rotating = true
+		const e = new Instance("BindableEvent")
+
+		const cframe = this.instance.CFrame
+		const point = new CFrame(rotation_point)
+		const offset = point.Inverse().mul(cframe)
+
+		let total_rotation = 0
+		const update = (dt: number) => {
+			total_rotation += dt * rotation_speed
+			total_rotation = math.clamp(total_rotation, 0, Math.HALF_PI)
+
+			// this won't work
+			const rotation = direction.mul(total_rotation)
+			const rotated_cframe = point.mul(CFrame.Angles(rotation.Z, rotation.Y, -rotation.X))
+			this.instance.CFrame = rotated_cframe.mul(offset)
+
+			if (total_rotation === Math.HALF_PI) {
+				// stop rotating
+				this.janitor.Remove("rotation")
+				e.Fire()
+			}
+		}
+
+		this.janitor.Add(RunService.RenderStepped.Connect(update), "Disconnect", "rotation")
+		e.Event.Wait()
+		this.is_rotating = false
+	}
+
+	public isStanding(): boolean {
+		return this.length > 1 ? this.rotation === Rotation.Standing : false
+	}
+
+	/**
+	 * Returns the average position for Up and Left blocks, and the lowest position for Standing blocks.
+	 */
+	public getPosition() {
+		// when SuperBlock is standing, all values in Vector3 will be the same except for Y
+		if (this.isStanding()) {
+			const min_y = math.min(...this.positions.map((position) => position.Y))
+			const pos = this.positions[0]
+			return new Vector3(pos.X, min_y, pos.Z)
+		}
+
+		// combine all positions together to get an average
+		return this.positions.reduce((total, position) => total.add(position), v3.zero).div(this.length)
+	}
+
+	/**
+	 * Returns the positions which are touching a tile (on ground)
+	 */
+	public getPositions(): Vector3[] {
+		// Should only return one value as only one value will be touching a tile
+		if (this.length <= 1 || this.isStanding()) {
+			return [this.getPosition()]
+		}
+
+		// Return position of each cell in the Block
+		return this.positions
+	}
+
+	public combine(block: Block): Block {
+		print([...this.positions, ...block.positions])
+		return new Block([...this.positions, ...block.positions])
+	}
+
+	public split() {}
+
+	// make the player fall with a given velocity, such as when completing a level or falling off the map
+	public fall(direction: Vector3 = v3.zero) {
+		// this.instance is managed by the janitor so I create a clone that won't be deleted when destroy is called
+		const part = this.instance.Clone()
+		this.instance.Destroy()
+
+		part.Parent = Workspace
+		part.Anchored = false
+
+		// apply rotation to the part
+		if (direction.Magnitude > 0) {
+			// part.ApplyImpulse(direction.mul(part.Mass))
+			const angular_impulse = Vector3Math.rotateY(direction.mul(part.Mass), math.pi / 2)
+			part.ApplyAngularImpulse(angular_impulse)
+			Debris.AddItem(part, 2)
+			// print(`Falling with angular direction: ${angular_impulse}`)
+		}
+	}
+
+	public destroy() {
+		this.janitor.Cleanup()
+	}
+}
+
+export class BlockFactory {
+	constructor(private project: Game) {}
+
+	public createBlock(position: Vector3, direction = v3.up, length = 2) {
+		const positions = []
+		for (let i = 0; i < length; i++) {
+			positions.push(position.add(direction.mul(i)))
+		}
+
+		return new Block(positions)
+	}
+}
