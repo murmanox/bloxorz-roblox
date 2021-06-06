@@ -10,16 +10,16 @@ enum BoardState {
 	Loading = "loading",
 }
 
-// hardcoded for now
-const level_data = levels[2]
-
 // temporary
-type LoadingCallback = (level: typeof level_data) => void
+type LoadingCallback = (height: number, width: number) => void
 
 // TODO: Board really should be where the player's blocks are stored
 export class Board {
 	// Keeps a reference to all parts generated in the draw method and it used to automatically clean them up
 	private level_janitor = new Janitor()
+
+	// Used to cleanup events whene the board is destroyed
+	private event_janitor = new Janitor()
 
 	// I map to typeof Tile instead of an instance of Tile to allow for easier editing of individual tiles
 	// via buttons or adding targets for teleporters
@@ -36,9 +36,6 @@ export class Board {
 	public width: number
 	public height: number
 
-	public level_tiles!: string[]
-	public start_positions!: typeof level_data.start_positions
-
 	public tile_class_array: (Tile | 0)[][] = []
 
 	public loading: RBXScriptSignal<LoadingCallback>
@@ -48,10 +45,10 @@ export class Board {
 		unloading: new Instance("BindableEvent") as BindableEvent<LoadingCallback>,
 	}
 
-	constructor(private position: Vector3) {
-		// init level size
-		this.width = this.level_tiles[0].size()
-		this.height = this.level_tiles.size()
+	constructor(private position: Vector3, private level_data: LevelData) {
+		// init level variables
+		this.width = level_data.level_tiles[0].size()
+		this.height = level_data.level_tiles.size()
 
 		// init events
 		this.loading = this.events.loading.Event
@@ -62,31 +59,6 @@ export class Board {
 			combined_tile_array = [...this.default_tiles, ...level_data.tiles]
 		}
 		this.tiles = new Map<string, typeof Tile | CustomTile>(combined_tile_array)
-
-		UserInputService.InputBegan.Connect((input) => {
-			if (input.KeyCode === Enum.KeyCode.R && input.UserInputState === Enum.UserInputState.Begin) {
-				this.resetBoard()
-			}
-		})
-
-		// TODO: Fire this event on level load
-		delay(1, () => {
-			this.events.loading.Fire(level_data)
-		})
-	}
-
-	public setLevel(level: LevelData) {
-		this.width = level.level_tiles[0].size()
-		this.height = level.level_tiles.size()
-		this.tile_class_array = []
-		this.level_tiles = level.level_tiles
-		this.start_positions = level.start_positions
-		let combined_tile_array: [string, typeof Tile | CustomTile][] = [...this.default_tiles]
-		if (level.tiles) {
-			combined_tile_array = [...this.default_tiles, ...level.tiles]
-		}
-		this.tiles = new Map<string, typeof Tile | CustomTile>(combined_tile_array)
-		this.unloadBoard()
 	}
 
 	public getTile(x: number, y: number): Tile | 0 {
@@ -98,12 +70,16 @@ export class Board {
 		return this.tile_class_array[y][x]
 	}
 
+	// TODO: make this a promise or non-async
 	public draw() {
+		this.events.loading.Fire(this.height, this.width)
+
 		// clear the board if it's already been drawn
 		this.level_janitor.Cleanup()
 
 		// generate Tile objects from level_tiles data
-		this.level_tiles.forEach((tile_string) => {
+		// TODO: convert this to promise
+		this.level_data.level_tiles.forEach((tile_string) => {
 			const arr = [...tile_string]
 
 			this.tile_class_array.push(
@@ -184,15 +160,15 @@ export class Board {
 		this.tile_class_array = []
 
 		// redraw the board and generated Tile objects
-		print("unloading")
 		this.unloadBoard()
-		print("unloaded")
 		this.draw()
-		print("drawn")
 	}
 
 	public unloadBoard() {
-		print("unload called")
+		if (this.tile_count.Value <= 0) {
+			return
+		}
+
 		const e = new Instance("BindableEvent")
 
 		// TODO: clean this up !!!
@@ -209,11 +185,14 @@ export class Board {
 			callback()
 		})
 		this.instance_callbacks = []
+		e.Event.Wait()
 
-		if (this.tile_count.Value > 0) {
-			e.Event.Wait()
-		} else {
-			c.Disconnect()
-		}
+		// tile animations have finished, destroy instances
+		this.level_janitor.Cleanup()
+	}
+
+	public destroy() {
+		this.unloadBoard()
+		this.event_janitor.Cleanup()
 	}
 }
