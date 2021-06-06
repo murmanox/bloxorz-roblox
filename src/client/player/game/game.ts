@@ -1,8 +1,9 @@
 import { Janitor } from "@rbxts/janitor"
 import { ContextActionService, TweenService, UserInputService, Workspace } from "@rbxts/services"
 import game_config from "shared/config/game-config"
-import { levels } from "shared/level/level-config"
+import { LevelData, levels } from "shared/level/level-config"
 import { v3 } from "shared/utility/vector3-utils"
+import { settings } from "../settings/keybinds"
 import type { Block } from "./block"
 import { BlockFactory } from "./block"
 import { Board } from "./board"
@@ -17,16 +18,18 @@ export enum GameState {
 	Lose = "Lose",
 }
 
-type LevelCompleteCallback = (index: number) => void
+type LevelLoadingCallback = (height: number, width: number) => void
+type LevelCompleteCallback = Callback
 
 const config = game_config
 export class Game {
 	private janitor = new Janitor<{ move_began: RBXScriptConnection }>()
 
 	// TODO: I should probably make a new board each time I load a level, it will be much cleaner
-	public board: Board
-	public player: PlayerController
+	public board?: Board
+	public player?: PlayerController
 
+	private current_level?: LevelData
 	public state: GameState
 	public scale = config.scale
 	public board_position = config.board_position
@@ -34,44 +37,21 @@ export class Game {
 	private block_factory = new BlockFactory(this)
 
 	// exposed events
+	public level_loading: RBXScriptSignal<LevelLoadingCallback>
 	public level_finished: RBXScriptSignal
 
 	// event implementations
 	private events = {
+		level_loading: new Instance("BindableEvent") as BindableEvent<LevelLoadingCallback>,
 		level_finished: new Instance("BindableEvent"),
 	}
 
 	constructor() {
 		// init events
+		this.level_loading = this.events.level_loading.Event
 		this.level_finished = this.events.level_finished.Event
-		this.board = new Board(this.board_position)
 
 		this.state = GameState.Loading
-
-		// initialise the player
-		const blocks: Block[] = []
-		this.board.start_positions.forEach((start) => {
-			blocks.push(
-				this.block_factory.createBlock(
-					new Vector3(start.column, 0, start.row),
-					start.direction,
-					start.length
-				)
-			)
-		})
-
-		this.player = new PlayerController(this, blocks)
-		this.player.onMoveCallback = (block, direction) => {
-			this.onPlayerMoved(direction)
-		}
-
-		this.janitor.Add(
-			this.player.move_began.Connect(() => {
-				this.onPlayerMoveBegan()
-			}),
-			"Disconnect",
-			"move_began"
-		)
 
 		ContextActionService.BindAction(
 			"reset",
@@ -81,12 +61,10 @@ export class Game {
 				}
 			},
 			false,
-			Enum.KeyCode.R
+			...settings.keybinds.reset
 		)
-	}
 
-	public initialise() {
-		// maybe use a promise here?
+		// for debugging
 		ContextActionService.BindAction(
 			"next_level",
 			() => {
@@ -95,14 +73,13 @@ export class Game {
 			false,
 			Enum.KeyCode.P
 		)
-		// coroutine.wrap(() => {
-		// 	this.board.draw()
-		// 	this.state = GameState.Waiting
-		// })()
 	}
 
 	// check all game logic to see if the player has won or lost
 	public check() {
+		if (!this.player) return
+		if (!this.board) return
+
 		const blocks = this.player.blocks
 
 		let lose = false
@@ -112,7 +89,7 @@ export class Game {
 		for (const block of blocks) {
 			const tiles_touching = block
 				.getPositions()
-				.map((position) => this.board.getTile(position.X, position.Z))
+				.map((position) => this.board!.getTile(position.X, position.Z))
 
 			const is_losing_position = tiles_touching.some((tile) => {
 				return tile === 0 ? true : tile.isLosingPosition(block)
@@ -152,11 +129,14 @@ export class Game {
 	}
 
 	// Called when the player moves a block. Calls the onStepped method for tiles that the current block is touching.
-	public onPlayerMoved(direction: Vector3) {
+	public onPlayerMoveFinished(direction: Vector3) {
+		if (!this.player) return
+		if (!this.board) return
+
 		const current_block = this.player.current_block
 		const tiles_touching = current_block
 			.getPositions()
-			.map((position) => this.board.getTile(position.X, position.Z))
+			.map((position) => this.board!.getTile(position.X, position.Z))
 
 		// handle stepping on tiles
 		tiles_touching.forEach((tile) => {
@@ -195,7 +175,7 @@ export class Game {
 						v3.zero
 					)
 					const losing_pos = current_positions.find((position) => {
-						return testLosing(this.board.getTile(position.X, position.Z))
+						return testLosing(this.board!.getTile(position.X, position.Z))
 					}) as Vector3
 
 					// losing position will be 1 apart from a non-losing one, so we can subtract it twice
@@ -214,90 +194,71 @@ export class Game {
 	}
 
 	private onPlayerWin() {
-		this.board.unloadBoard()
-		this.events.level_finished.Fire()
+		if (this.board) {
+			this.board.unloadBoard()
+			this.events.level_finished.Fire()
+		}
 	}
 
-	public setLevel(index: number, level_complete_callback: LevelCompleteCallback) {
-		print(`Loading level ${index}.`)
-		this.state = GameState.Loading
-		this.board.setLevel(levels[index])
-
-		this.player.destroy()
-
-		// temporary
-		const blocks: Block[] = []
-
-		// create the blocks that will be controlled by the player
-		this.board.start_positions.forEach((start) => {
-			blocks.push(
-				this.block_factory.createBlock(
-					new Vector3(start.column, 0, start.row),
-					start.direction,
-					start.length
-				)
-			)
-		})
-
-		// TODO: animate player to fall on board
-		// initialise the player
-		this.player = new PlayerController(this, blocks)
-		this.player.onMoveCallback = (block, direction) => {
-			this.onPlayerMoved(direction)
+	private createPlayer(level: LevelData): PlayerController {
+		const player = new PlayerController(
+			this,
+			this.block_factory.fromStartPositions(level.start_positions)
+		)
+		player.onMoveCallback = (block, direction) => {
+			this.onPlayerMoveFinished(direction)
 		}
 
 		this.janitor.Add(
-			this.player.move_began.Connect(() => {
+			player.move_began.Connect(() => {
 				this.onPlayerMoveBegan()
 			}),
 			"Disconnect",
 			"move_began"
 		)
 
+		return player
+	}
+
+	public loadLevel(level: LevelData, level_complete_callback: LevelCompleteCallback) {
+		print(`Loading level: ${level.name}.`)
+
+		this.state = GameState.Loading
+		this.current_level = level
+
+		if (this.player) this.player.destroy()
+
+		if (this.board) {
+			this.board.destroy()
+		}
+		this.board = new Board(this.board_position, level)
+
+		// fire event before draw call as draw is currently asyncronous
+		this.events.level_loading.Fire(this.board.height, this.board.width)
 		this.board.draw()
+
+		// spawn player after the board has been animated in
+		this.player = this.createPlayer(level)
+
 		this.state = GameState.Waiting
 		const c = this.level_finished.Connect(() => {
-			print(`Finished level ${index}`)
+			print(`Finished level ${level.name}`)
 			c.Disconnect()
-			level_complete_callback(index)
+			level_complete_callback()
 		})
 	}
 
 	public resetLevel() {
+		if (!this.board) return
+		if (!this.player) return
+		if (!this.current_level) return
+
 		this.state = GameState.Loading
+
 		this.player.destroy()
-
-		// temporary
-		const blocks: Block[] = []
-
-		// initialise the board
 		this.board.resetBoard()
 
-		// create the blocks that will be controlled by the player
-		this.board.start_positions.forEach((start) => {
-			blocks.push(
-				this.block_factory.createBlock(
-					new Vector3(start.column, 0, start.row),
-					start.direction,
-					start.length
-				)
-			)
-		})
-
-		// TODO: animate player to fall on board
-		// initialise the player
-		this.player = new PlayerController(this, blocks)
-		this.player.onMoveCallback = (block, direction) => {
-			this.onPlayerMoved(direction)
-		}
-
-		this.janitor.Add(
-			this.player.move_began.Connect(() => {
-				this.onPlayerMoveBegan()
-			}),
-			"Disconnect",
-			"move_began"
-		)
+		this.player = this.createPlayer(this.current_level)
 
 		this.state = GameState.Waiting
 	}
