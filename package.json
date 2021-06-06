@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "-": "^0.0.1",
+    "@rbxts/delay-spawn-wait": "^2.0.0",
     "@rbxts/flipper": "^1.2.2",
     "@rbxts/janitor": "^1.1.2",
     "@rbxts/maid": "^1.0.0-ts.1",

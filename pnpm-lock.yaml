@@ -1,5 +1,6 @@
 dependencies:
   '-': 0.0.1
+  '@rbxts/delay-spawn-wait': 2.0.0_86832ad68a7707263b0c374f7304c438
   '@rbxts/flipper': 1.2.2
   '@rbxts/janitor': 1.1.2
   '@rbxts/maid': 1.0.0-ts.1
@@ -82,6 +83,16 @@ packages:
   /@rbxts/compiler-types/1.0.0-types.0:
     resolution:
       integrity: sha512-DMYByLmapF5T04l1Jmg71BZNmR8sFhDt/aq9aV9X8JjnQimnCCBFK+FzdHh9Nx40D/o+k9vYn5aS58g8kISlYQ==
+  /@rbxts/delay-spawn-wait/2.0.0_86832ad68a7707263b0c374f7304c438:
+    dependencies:
+      '@rbxts/compiler-types': 1.0.0-types.0
+      '@rbxts/types': 1.0.485
+    dev: false
+    peerDependencies:
+      '@rbxts/compiler-types': ^1.0.0-beta.15.0
+      '@rbxts/types': ^1.0.441
+    resolution:
+      integrity: sha512-whUOid6oxtn0QTtbim5QLLjJZ63/IGqHkVCh+GF/alRw3qlo1p9SyULuRciwWec7FU42L1NJzUteFoajiCfywA==
   /@rbxts/flipper/1.2.2:
     dev: false
     resolution:
@@ -1202,6 +1213,7 @@ packages:
 specifiers:
   '-': ^0.0.1
   '@rbxts/compiler-types': ^1.0.0-types.0
+  '@rbxts/delay-spawn-wait': ^2.0.0
   '@rbxts/flipper': ^1.2.2
   '@rbxts/janitor': ^1.1.2
   '@rbxts/maid': ^1.0.0-ts.1
