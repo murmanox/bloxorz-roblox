@@ -1,10 +1,11 @@
 import Make from "@rbxts/make"
-import { Players, StarterGui, TweenService, Workspace } from "@rbxts/services"
-import { Math } from "shared/utility/math"
+import { Players, StarterGui, Workspace } from "@rbxts/services"
 import { Game } from "./player/game/Game"
-import type { LevelData } from "shared/level/level-config"
+import { LevelData, levels } from "shared/level/level-config"
 import { Janitor } from "@rbxts/janitor"
+import { Math } from "shared/utility/math"
 
+// since we don't load the player's character we have to manually copy StarterGui to PlayerGui
 const player_gui = Players.LocalPlayer.WaitForChild("PlayerGui") as PlayerGui
 StarterGui.GetChildren().forEach((child) => {
 	child.Clone().Parent = player_gui
@@ -14,25 +15,12 @@ StarterGui.SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
 
 const app = new Game()
 
-function makePart(position: Vector3) {
-	return Make("Part", {
-		Size: new Vector3(0.1, 0.1, 0.1),
-		Parent: Workspace,
-		Position: position,
-		Anchored: true,
-		Color: new Color3(0, 1),
-	})
-}
-
-function moveCamera(level_data: LevelData) {
+function scaleCamera(height: number, width: number) {
 	// position camera relative to the board
 	const camera = Workspace.CurrentCamera
 	if (camera === undefined) {
 		return
 	}
-
-	const width = level_data.level_tiles[0].size()
-	const height = level_data.level_tiles.size()
 
 	const x = (width - 1) / 2
 	const y = 0.5
@@ -65,12 +53,8 @@ function moveCamera(level_data: LevelData) {
 	// 	part.Position.add(part.Size.div(2).mul(new Vector3(1, 1, -1))),
 	// ]
 
-	const screen_size = camera.ViewportSize.sub(new Vector2(0, 36))
+	const screen_size = camera.ViewportSize.sub(new Vector2(0, 36)) // minus gui inset
 	const part_ratio = math.max(1, part.Size.X / part.Size.Z)
-	// const aspect_ratio = math.min(
-	// 	math.max(screen_size.X / screen_size.Y, screen_size.Y / screen_size.X),
-	// 	part_ratio * 0.85
-	// )
 	const aspect_ratio = math.min(part_ratio, screen_size.X / screen_size.Y)
 	const extents = part.Size.div(2).Magnitude
 	let distance = (extents * 1.2) / math.tan(math.rad(camera.FieldOfView / 2))
@@ -79,46 +63,42 @@ function moveCamera(level_data: LevelData) {
 	distance /= aspect_ratio
 	camera.CFrame = cf.mul(new CFrame(0, 0, distance))
 
-	// print(
-	// 	`Aspect Ratio: ${Math.roundTo(
-	// 		aspect_ratio,
-	// 		2
-	// 	)}, Distance: ${distance}, Extents: ${extents}, Ratio: ${part_ratio}`
-	// )
-	print(distance)
+	print(
+		`Aspect Ratio: ${Math.roundTo(
+			aspect_ratio,
+			2
+		)}, Distance: ${distance}, Extents: ${extents}, Ratio: ${part_ratio}`
+	)
 }
 
 interface JanitorProps {
 	camera: RBXScriptConnection
 	part: BasePart
-	tween: Tween
 }
 
 const janitor = new Janitor<JanitorProps>()
-app.board.loading.Connect((level) => {
+app.level_loading.Connect((height, width) => {
 	janitor.Cleanup()
-	moveCamera(level)
+	scaleCamera(height, width)
 	janitor.Add(
-		Workspace.CurrentCamera!.GetPropertyChangedSignal("ViewportSize").Connect(() =>
-			moveCamera(level)
-		),
+		Workspace.CurrentCamera!.GetPropertyChangedSignal("ViewportSize").Connect(() => {
+			print(`resized viewport: ${Workspace.CurrentCamera!.ViewportSize}`)
+			scaleCamera(height, width)
+		}),
 		"Disconnect",
 		"camera"
 	)
 })
 
-wait(1)
-app.initialise()
-
 function incrementLevel(index: number) {
 	return [
-		index + 1,
-		(index: number) => {
-			app.setLevel(...incrementLevel(index))
+		levels[index],
+		() => {
+			app.loadLevel(...incrementLevel(index + 1))
 		},
-	] as [number, () => void]
+	] as [LevelData, () => void]
 }
 
-app.setLevel(0, (index) => {
-	app.setLevel(...incrementLevel(index))
-})
+wait(1)
+const start_level = 0
+app.loadLevel(...incrementLevel(start_level))
