@@ -1,6 +1,7 @@
 import { Janitor } from "@rbxts/janitor"
 import Make from "@rbxts/make"
-import { Debris, RunService, Workspace } from "@rbxts/services"
+import { Debris, RunService, TweenService, Workspace } from "@rbxts/services"
+import { StartPosition } from "shared/level/level-config"
 import { Math, roundTo } from "shared/utility/math"
 import { v3, Vector3Math } from "shared/utility/vector3-utils"
 import type { Game } from "./game"
@@ -20,6 +21,12 @@ enum Rotation {
 	Standing = "standing",
 	Left = "left",
 	Up = "up",
+}
+
+enum BlockState {
+	Idle = "idle",
+	Rotating = "rotating",
+	Falling = "falling", // unanchored block exists but not this.instance
 }
 
 const rotation_vector3_map = {
@@ -43,16 +50,18 @@ function getInitialRotation(positions: Vector3[]): Rotation {
 
 const x_rotation = Math.HALF_PI
 const z_rotation = -Math.HALF_PI
-const rotation_speed = math.rad(360) // per second
+const rotation_speed = math.rad(420) // per second
+const block_spawn_height = new Vector3(0, 10, 0)
+const block_spawn_time = 0.4
 
 export class Block {
 	public positions: Vector3[]
 	public rotation: Rotation
 	public length: number
+	public state = BlockState.Idle
 
 	private janitor = new Janitor<{ rotation: RBXScriptConnection }>()
-	private instance: BasePart
-	private is_rotating = false
+	private instance?: BasePart
 
 	constructor(positions: Vector3[]) {
 		// check that all positions are of uniform distance apart
@@ -61,6 +70,13 @@ export class Block {
 		this.rotation = getInitialRotation(positions)
 		this.positions = positions
 		this.length = positions.size()
+		this.spawn()
+	}
+
+	public spawn() {
+		// can only call spawn once at the start of the level
+		if (this.instance && this.state !== BlockState.Falling) return
+		this.state = BlockState.Falling
 
 		// average position of all block positions
 		const position = this.positions
@@ -69,13 +85,25 @@ export class Block {
 
 		const length = rotation_vector3_map[this.rotation].mul(this.length)
 		const size = new Vector3(math.max(length.X, 1), math.max(length.Y, 1), math.max(length.Z, 1))
-		const instance = makePart(position, size)
+		const instance = makePart(position.add(block_spawn_height), size)
 
+		const tween = TweenService.Create(
+			instance,
+			new TweenInfo(block_spawn_time, Enum.EasingStyle.Cubic, Enum.EasingDirection.In),
+			{ Position: position }
+		)
+
+		tween.Play()
+		// TOOD: wobble
+		tween.Completed.Wait()
+
+		this.state = BlockState.Idle
 		this.instance = this.janitor.Add(instance)
 	}
 
 	public move(direction: Vector3) {
-		if (this.is_rotating) return
+		print("moving")
+		if (this.state !== BlockState.Idle) return
 		// very basic checking, maybe do more later
 		if (direction.Magnitude !== 1) return
 
@@ -129,7 +157,9 @@ export class Block {
 	}
 
 	private rotateBlock(direction: Vector3, rotation_point: Vector3) {
-		this.is_rotating = true
+		if (!this.instance) return
+
+		this.state = BlockState.Rotating
 		const e = new Instance("BindableEvent")
 
 		const cframe = this.instance.CFrame
@@ -138,6 +168,9 @@ export class Block {
 
 		let total_rotation = 0
 		const update = (dt: number) => {
+			// failsafe incase janitor isn't cleaned up before next renderstep
+			if (!this.instance) return
+
 			total_rotation += dt * rotation_speed
 			total_rotation = math.clamp(total_rotation, 0, Math.HALF_PI)
 
@@ -155,7 +188,7 @@ export class Block {
 
 		this.janitor.Add(RunService.RenderStepped.Connect(update), "Disconnect", "rotation")
 		e.Event.Wait()
-		this.is_rotating = false
+		this.state = BlockState.Idle
 	}
 
 	public isStanding(): boolean {
@@ -199,24 +232,32 @@ export class Block {
 
 	// make the player fall with a given velocity, such as when completing a level or falling off the map
 	public fall(direction: Vector3 = v3.zero) {
+		if (this.state === BlockState.Falling) return
+		if (!this.instance) return
 		// this.instance is managed by the janitor so I create a clone that won't be deleted when destroy is called
 		const part = this.instance.Clone()
-		this.instance.Destroy()
-
 		part.Parent = Workspace
 		part.Anchored = false
+		Debris.AddItem(part, 2)
+		this.janitor.Cleanup()
+		this.state = BlockState.Falling
 
 		// apply rotation to the part
 		if (direction.Magnitude > 0) {
-			// part.ApplyImpulse(direction.mul(part.Mass))
 			const angular_impulse = Vector3Math.rotateY(direction.mul(part.Mass), math.pi / 2)
 			part.ApplyAngularImpulse(angular_impulse)
-			Debris.AddItem(part, 2)
-			// print(`Falling with angular direction: ${angular_impulse}`)
 		}
 	}
 
 	public destroy() {
+		print(`destroying part: ${this.instance}, state: ${this.state}`)
+		if (this.instance && this.state !== BlockState.Falling) {
+			this.state = BlockState.Falling
+			const part = this.instance.Clone()
+			part.Parent = Workspace
+			part.Anchored = false
+			Debris.AddItem(part, 2)
+		}
 		this.janitor.Cleanup()
 	}
 }
@@ -231,5 +272,21 @@ export class BlockFactory {
 		}
 
 		return new Block(positions)
+	}
+
+	public fromStartPosition(position: StartPosition): Block {
+		return this.createBlock(
+			new Vector3(position.column, 0, position.row),
+			position.direction,
+			position.length
+		)
+	}
+
+	public fromStartPositions(positions: StartPosition[]): Block[] {
+		const blocks = []
+		for (const position of positions) {
+			blocks.push(this.fromStartPosition(position))
+		}
+		return blocks
 	}
 }
