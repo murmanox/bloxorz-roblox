@@ -14,6 +14,7 @@ function makePart(position: Vector3, size: Vector3) {
 		Size: size,
 		CanCollide: true,
 		Material: Enum.Material.SmoothPlastic,
+		CustomPhysicalProperties: new PhysicalProperties(0.7, 0.2, 0, 1, 75),
 	})
 }
 
@@ -94,11 +95,11 @@ export class Block {
 		)
 
 		tween.Play()
-		// TOOD: wobble
 		tween.Completed.Wait()
 
-		this.state = BlockState.Idle
 		this.instance = this.janitor.Add(instance)
+		this.wobbleAsync()
+		this.state = BlockState.Idle
 	}
 
 	public move(direction: Vector3) {
@@ -156,6 +157,47 @@ export class Block {
 		}
 	}
 
+	private wobbleAsync() {
+		if (!this.instance) return
+		const rotation_points = []
+
+		for (let x = -1; x < 2; x++) {
+			for (let z = -1; z < 2; z++) {
+				if (x === 0 && z === 0) continue
+				const block_z_offset = this.rotation === Rotation.Up ? (this.length * z) / 2 : z / 2
+				const block_x_offset = this.rotation === Rotation.Left ? (this.length * x) / 2 : x / 2
+				const block_offset = new Vector3(block_x_offset, -0.5, block_z_offset)
+				const rotation_point = this.getPosition().add(block_offset)
+
+				rotation_points.push([rotation_point, new Vector3(x, 0, z)])
+			}
+		}
+
+		// do the wobbling
+		for (let i = 0; i < 2; i++) {
+			const index = (0 + 2 * i + math.max(i - 1, 0)) % (rotation_points.size() - 1)
+			const p = rotation_points[index][0]
+			const dir = rotation_points[index][1]
+			const cframe = this.instance.CFrame
+			const point = new CFrame(p)
+			const offset = point.Inverse().mul(cframe)
+
+			const max_step = 8 - i
+			for (let step = 1; step <= max_step; step++) {
+				RunService.RenderStepped.Wait()
+
+				const mul = Math.roundTo(math.sin(math.rad(step * (180 / max_step))), 2)
+				const rotation = dir.mul(math.rad(mul) * (5 - i))
+				const rotated_cframe = point.mul(CFrame.Angles(rotation.Z, rotation.Y, -rotation.X))
+				this.instance.CFrame = rotated_cframe.mul(offset)
+			}
+		}
+
+		for (let i = 0; i < 5; i++) {
+			RunService.RenderStepped.Wait()
+		}
+	}
+
 	private rotateBlock(direction: Vector3, rotation_point: Vector3) {
 		if (!this.instance) return
 
@@ -174,7 +216,6 @@ export class Block {
 			total_rotation += dt * rotation_speed
 			total_rotation = math.clamp(total_rotation, 0, Math.HALF_PI)
 
-			// this won't work
 			const rotation = direction.mul(total_rotation)
 			const rotated_cframe = point.mul(CFrame.Angles(rotation.Z, rotation.Y, -rotation.X))
 			this.instance.CFrame = rotated_cframe.mul(offset)
