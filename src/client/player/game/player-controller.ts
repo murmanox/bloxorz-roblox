@@ -18,9 +18,7 @@ enum BindActionNames {
 const BLOCK_SIZE = 1
 const arrow_offset = 0.15
 
-type PlayerControllableBlock = Block
-
-const arrow_position_callback = (block: PlayerControllableBlock): Vector3 => {
+const arrow_position_callback = (block: Block): Vector3 => {
 	if (block.isStanding()) {
 		return block.getPosition().add(new Vector3(0, BLOCK_SIZE * block.length - BLOCK_SIZE / 2, 0))
 	} else {
@@ -38,12 +36,12 @@ const action_direction_map = {
 type MoveBeganCallback = (block: Block) => void
 
 export class PlayerController {
-	public blocks: PlayerControllableBlock[]
-	public current_block: PlayerControllableBlock
+	public blocks: Block[]
+	public current_block: Block
 	public arrow: DisplayArrow
 	private janitor = new Janitor()
 
-	public onMoveCallback?: (block: PlayerControllableBlock, direction: Vector3) => void
+	public onMoveCallback?: (block: Block, direction: Vector3) => void
 
 	public move_began: RBXScriptSignal<MoveBeganCallback>
 	public move_ended: RBXScriptSignal<MoveBeganCallback>
@@ -52,7 +50,7 @@ export class PlayerController {
 		move_ended: new Instance("BindableEvent") as BindableEvent<MoveBeganCallback>,
 	}
 
-	constructor(private app: Game, blocks: PlayerControllableBlock[]) {
+	constructor(private app: Game, blocks: Block[]) {
 		this.blocks = blocks
 		this.current_block = blocks[0]
 
@@ -98,7 +96,7 @@ export class PlayerController {
 	}
 
 	// this can definitely be optimised
-	public checkCombine(block: PlayerControllableBlock) {
+	public checkCombine(block: Block) {
 		// this would probably be cool if I could check up, down, left and right on the board
 		const current_block = this.current_block
 
@@ -184,7 +182,7 @@ export class PlayerController {
 			}
 
 			// check all bound keys until we find one
-			for (const [action_name, value] of pairs(settings.keybinds)) {
+			for (const [action_name, value] of pairs(settings.keybinds.movement)) {
 				for (const keycode of value) {
 					if (UserInputService.IsKeyDown(keycode)) {
 						this.onMove(action_name)
