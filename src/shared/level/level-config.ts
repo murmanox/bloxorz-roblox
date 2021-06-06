@@ -30,7 +30,7 @@ interface CustomTiles {
 
 export type CustomTile = PickOne<CustomTiles>
 
-interface StartPosition {
+export interface StartPosition {
 	row: number
 	column: number
 	length: number
@@ -247,7 +247,7 @@ const level7 = {
 	description: "",
 	image: "",
 
-	start_positions: [{ row: 3, column: 0, length: 2, direction: v3.up }],
+	start_positions: [{ row: 0, column: 0, length: 2, direction: v3.up }],
 	level_tiles: ["111111111111111111111111111111111111111111111111111111"],
 }
 
@@ -256,7 +256,7 @@ const level8 = {
 	description: "",
 	image: "",
 
-	start_positions: [{ row: 3, column: 0, length: 2, direction: v3.up }],
+	start_positions: [{ row: 0, column: 0, length: 2, direction: v3.up }],
 	level_tiles: [
 		"1",
 		"1",
@@ -287,4 +287,5 @@ const level8 = {
 	],
 }
 
+// TODO: Clean this up
 export const levels: LevelData[] = [level1, level2, level3, level4, level5, level6, level7, level8]
