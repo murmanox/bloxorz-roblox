@@ -1,4 +1,4 @@
-interface StarterGui extends BasePlayerGui {
+interface PlayerGui extends BasePlayerGui {
 	ScreenGui: ScreenGui & {
 		vignette: ImageLabel
 		ViewportFrame: ViewportFrame & {
