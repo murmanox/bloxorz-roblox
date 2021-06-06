@@ -1,3 +1,4 @@
+import { delay } from "@rbxts/delay-spawn-wait"
 import Make from "@rbxts/make"
 import { ReplicatedStorage, SoundService, TweenService } from "@rbxts/services"
 import { ButtonAction } from "shared/game/tiles/tile-types"
@@ -58,7 +59,11 @@ export default class Tile {
 				instance.Parent = parent
 			},
 			callback: (animate_out_callback: Callback) => {
-				Tile.tweenTile(instance, tile_out_position, animate_out_callback)
+				Tile.tweenTile(instance, tile_out_position, () => {
+					animate_out_callback()
+					// might help with the player landing on the blocks after tweened out
+					instance.Destroy()
+				})
 			},
 		}
 	}
@@ -93,7 +98,8 @@ export default class Tile {
 	}
 
 	public static tweenTile(tile: BasePart, position: Vector3, callback: Callback) {
-		delay(math.random(75, 100) / 100, () => {
+		const tween_delay = math.random(75, 100) / 100
+		delay(tween_delay, () => {
 			const tween = TweenService.Create(tile, new TweenInfo(0.5), {
 				CFrame: new CFrame(position, position.add(tile.CFrame.LookVector)),
 			})
