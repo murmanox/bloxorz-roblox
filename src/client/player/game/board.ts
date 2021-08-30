@@ -3,7 +3,15 @@ import { UserInputService, Workspace } from "@rbxts/services"
 import { CustomTile, LevelData, levels } from "shared/level/level-config"
 import { generator } from "shared/utility/generators"
 import { inRange } from "shared/utility/math"
-import { ButtonTile, EndTile, Tile, ToggleTile, VerticalButtonTile, WoodenTile } from "./tiles"
+import {
+	ButtonTile,
+	EndTile,
+	TeleporterTile,
+	Tile,
+	ToggleTile,
+	VerticalButtonTile,
+	WoodenTile,
+} from "./tiles"
 
 enum BoardState {
 	Loaded = "loaded",
@@ -101,6 +109,10 @@ export class Board {
 
 					if ("toggle" in tile) {
 						return new ToggleTile(tile.toggle!.initial)
+					}
+
+					if ("teleporter" in tile) {
+						return new TeleporterTile(this, tile.teleporter!.targets)
 					}
 
 					return new (tile as typeof Tile)()

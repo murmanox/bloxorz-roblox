@@ -12,18 +12,18 @@ const tile_slide_offset = new Vector3(0, -13, 0)
 
 export default class ButtonTile extends Tile {
 	constructor(
-		private board: Board,
-		private targets: Position[],
-		private action: ButtonAction = ButtonAction.Toggle
+		protected board: Board,
+		public targets: Position[],
+		protected action: ButtonAction = ButtonAction.Toggle
 	) {
 		super()
 	}
 
 	onStepped(block: Block) {
-		this.activated()
+		this.activated(block)
 	}
 
-	activated() {
+	activated(block: Block) {
 		const tiles = this.targets.map((position) => this.board.getTile(position.column, position.row))
 		tiles.forEach((tile) => {
 			if (tile) {

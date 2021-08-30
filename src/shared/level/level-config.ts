@@ -18,14 +18,15 @@ interface Toggle {
 	initial: boolean
 }
 
-interface VerticalButton {
+interface Teleporter {
 	targets: Position[]
 }
 
 interface CustomTiles {
 	button: Button
-	vertical_button: VerticalButton
+	vertical_button: Button
 	toggle: Toggle
+	teleporter: Teleporter
 }
 
 export type CustomTile = PickOne<CustomTiles>
@@ -161,18 +162,18 @@ const level5 = {
 	start_positions: [{ row: 1, column: 13, length: 2, direction: v3.up }],
 	level_tiles: [
 		"           1111",
-		" 1111tt1o111111",
+		" 1111bb1o111111",
 		" 1111       111",
 		" 11p1          ",
 		" 1111          ",
-		"   111u1tt111  ",
+		"   111u1bb111  ",
 		"          1111i",
 		"111       11111",
-		"12111tt111111  ",
+		"12111bb111111  ",
 		"1111           ",
 	],
 	tiles: new Map<string, CustomTile>([
-		["t", { toggle: { initial: true } }],
+		["b", { toggle: { initial: true } }],
 		[
 			"o",
 			{
@@ -247,8 +248,21 @@ const level7 = {
 	description: "",
 	image: "",
 
-	start_positions: [{ row: 0, column: 0, length: 2, direction: v3.up }],
-	level_tiles: ["111111111111111111111111111111111111111111111111111111"],
+	start_positions: [{ row: 3, column: 1, length: 2, direction: v3.up }],
+	level_tiles: [
+		"        1111   ",
+		"        1111   ",
+		"111     1  1111",
+		"111111111   121",
+		"111    11x  111",
+		"111    111  111",
+		" 11b   1       ",
+		"  111111       ",
+	],
+	tiles: new Map<string, CustomTile>([
+		["b", { toggle: { initial: false } }],
+		["x", { vertical_button: { targets: [{ column: 3, row: 6 }] } }],
+	]),
 }
 
 const level8 = {
@@ -256,36 +270,129 @@ const level8 = {
 	description: "",
 	image: "",
 
-	start_positions: [{ row: 0, column: 0, length: 2, direction: v3.up }],
+	start_positions: [{ row: 4, column: 1, length: 2, direction: v3.up }],
 	level_tiles: [
-		"1",
-		"1",
-		"1",
-		"1",
-		"1",
-		"1",
-		"1",
-		"1",
-		"1",
-		"1",
-		"1",
-		"1",
-		"1",
-		"1",
-		"1",
-		"1",
-		"1",
-		"1",
-		"1",
-		"1",
-		"1",
-		"1",
-		"1",
-		"1",
-		"1",
-		"1",
+		"         111   ",
+		"         111   ",
+		"         111   ",
+		"111111   111111",
+		"1111t1   111121",
+		"111111   111111",
+		"         111   ",
+		"         111   ",
+		"         111   ",
 	],
+	tiles: new Map<string, CustomTile>([
+		[
+			"t",
+			{
+				teleporter: {
+					targets: [
+						{ column: 10, row: 1 },
+						{ column: 10, row: 7 },
+					],
+				},
+			},
+		],
+	]),
+}
+
+const level9 = {
+	name: "LEVEL 9",
+	description: "",
+	image: "",
+
+	start_positions: [{ row: 1, column: 1, length: 2, direction: v3.up }],
+	level_tiles: [
+		"1111   1   1111",
+		"1111   1   11t1",
+		"111111111111111",
+		"      121      ",
+		"      111      ",
+	],
+	tiles: new Map<string, CustomTile>([
+		[
+			"t",
+			{
+				teleporter: {
+					targets: [
+						{ column: 12, row: 1 },
+						{ column: 2, row: 1 },
+					],
+				},
+			},
+		],
+	]),
+}
+
+const level10 = {
+	name: "LEVEL 10",
+	description: "",
+	image: "",
+
+	start_positions: [{ row: 1, column: 9, length: 2, direction: v3.up }],
+	level_tiles: [
+		"111     111111",
+		"121vv1vv1111t1",
+		"111     1111v ",
+		"         111v ",
+		"           11 ",
+		"            1 ",
+		"            1 ",
+		"           11 ",
+		"    11111  11 ",
+		"    1o  111x1 ",
+	],
+	tiles: new Map<string, CustomTile>([
+		[
+			"t",
+			{
+				teleporter: {
+					targets: [
+						{ column: 12, row: 1 },
+						{ column: 9, row: 1 },
+					],
+				},
+			},
+		],
+		["v", { toggle: { initial: false } }],
+		[
+			"o",
+			{
+				button: {
+					targets: [
+						{ column: 3, row: 1 },
+						{ column: 4, row: 1 },
+					],
+				},
+			},
+		],
+		[
+			"x",
+			{
+				vertical_button: {
+					targets: [
+						{ column: 6, row: 1 },
+						{ column: 7, row: 1 },
+						{ column: 12, row: 2 },
+						{ column: 12, row: 3 },
+					],
+				},
+			},
+		],
+	]),
 }
 
 // TODO: Clean this up
-export const levels: LevelData[] = [level1, level2, level3, level4, level5, level6, level7, level8]
+export const levels: LevelData[] = [
+	level1,
+	level2,
+	level3,
+	level4,
+	level5,
+	level6,
+	level7,
+	level8,
+	level9,
+	level10,
+]

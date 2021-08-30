@@ -1,22 +1,20 @@
 import { ReplicatedStorage, Workspace } from "@rbxts/services"
 import { v3 } from "shared/utility/vector3-utils"
 import { Block } from "../block"
-import ButtonTile from "./button-tile"
 import Tile from "./tile"
+import VerticalButtonTile from "./vertical-button-tile"
 
 const button_tile_mesh = ReplicatedStorage.assets.tiles.teleporter
 const tile_size = button_tile_mesh.tile.Size
 const tile_size_y = tile_size.mul(v3.up).div(2)
 const tile_slide_offset = new Vector3(0, -13, 0)
 
-export default class TeleportTile extends ButtonTile {
-	onStepped(block: Block) {
-		super.onStepped(block)
+export default class TeleportTile extends VerticalButtonTile {
+	public isActivated(block: Block): boolean {
+		return block.isStanding()
 	}
 
-	activated() {
-		print("teleport")
-	}
+	activated(block: Block) {}
 
 	draw(position: Vector3, completed: Callback) {
 		const tile_out_position = position.add(tile_slide_offset)

@@ -1,13 +1,17 @@
+import { wait } from "@rbxts/delay-spawn-wait"
 import { Janitor } from "@rbxts/janitor"
 import Make from "@rbxts/make"
-import { Debris, RunService, TweenService, Workspace } from "@rbxts/services"
+import { Debris, PhysicsService, RunService, TweenService, Workspace } from "@rbxts/services"
 import { StartPosition } from "shared/level/level-config"
 import { Math, roundTo } from "shared/utility/math"
 import { v3, Vector3Math } from "shared/utility/vector3-utils"
+import { HighlightSpanKind } from "typescript"
 import type { Game } from "./game"
 
-function makePart(position: Vector3, size: Vector3) {
-	return Make("Part", {
+const DEFAULT_BLOCK_LENGTH = 2
+
+function makePart(position: Vector3, size: Vector3): BasePart {
+	const part = Make("Part", {
 		Parent: Workspace,
 		Position: position,
 		Anchored: true,
@@ -16,6 +20,8 @@ function makePart(position: Vector3, size: Vector3) {
 		Material: Enum.Material.SmoothPlastic,
 		CustomPhysicalProperties: new PhysicalProperties(0.7, 0.2, 0, 1, 75),
 	})
+	PhysicsService.SetPartCollisionGroup(part, "Player")
+	return part
 }
 
 enum Rotation {
@@ -28,6 +34,8 @@ enum BlockState {
 	Idle = "idle",
 	Rotating = "rotating",
 	Falling = "falling", // unanchored block exists but not this.instance
+	Animating = "animating",
+	Destroyed = "destroyed",
 }
 
 const rotation_vector3_map = {
@@ -41,7 +49,6 @@ function getInitialRotation(positions: Vector3[]): Rotation {
 	const all_y_equal = positions.map((v) => v.Y).every((y, _, arr) => y === arr[0])
 	const all_z_equal = positions.map((v) => v.Z).every((z, _, arr) => z === arr[0])
 
-	// print(`X: ${is_x_equal}, Y: ${is_y_equal}, Z: ${is_z_equal}`)
 	if (!all_x_equal) return Rotation.Left
 	if (!all_y_equal) return Rotation.Standing
 	if (!all_z_equal) return Rotation.Up
@@ -61,7 +68,7 @@ export class Block {
 	public length: number
 	public state = BlockState.Idle
 
-	private janitor = new Janitor<{ rotation: RBXScriptConnection }>()
+	private janitor = new Janitor<{ rotation: RBXScriptConnection; instance: BasePart }>()
 	private instance?: BasePart
 
 	constructor(positions: Vector3[]) {
@@ -71,12 +78,13 @@ export class Block {
 		this.rotation = getInitialRotation(positions)
 		this.positions = positions
 		this.length = positions.size()
-		this.spawn()
 	}
 
+	// make the block fall from the sky into position
 	public spawn() {
 		// can only call spawn once at the start of the level
 		if (this.instance && this.state !== BlockState.Falling) return
+		// TODO: this shouldn't use falling as it' not falling, it's animating
 		this.state = BlockState.Falling
 
 		// average position of all block positions
@@ -97,16 +105,123 @@ export class Block {
 		tween.Play()
 		tween.Completed.Wait()
 
-		this.instance = this.janitor.Add(instance)
+		this.setInstance(instance)
 		this.wobbleAsync()
 		this.state = BlockState.Idle
 	}
 
-	public move(direction: Vector3) {
-		print("moving")
-		if (this.state !== BlockState.Idle) return
+	private setInstance(instance: BasePart) {
+		if (this.state !== BlockState.Destroyed) {
+			print("setting instance")
+			this.instance = this.janitor.Add(instance, "Destroy", "instance")
+		} else {
+			print("destroyed")
+			// block has already been destroyed, make the part fall
+			Debris.AddItem(instance, 2)
+			instance.Anchored = false
+		}
+	}
+
+	// maybe make an effects library and have a playEffect method?
+	// make the block fade into position
+	public fadeIn() {
+		return new Promise<void>((resolve, reject, onCancel) => {
+			// spawn neon part
+			this.state = BlockState.Animating
+
+			// average position of all block positions
+			const position = this.positions
+				.reduce((total, current) => total.add(current), v3.zero)
+				.div(this.positions.size())
+
+			const length = rotation_vector3_map[this.rotation].mul(this.length)
+			const size = new Vector3(math.max(length.X, 1), math.max(length.Y, 1), math.max(length.Z, 1))
+
+			const glow_part = makePart(position, size.mul(1.01))
+
+			glow_part.Material = Enum.Material.Neon
+			glow_part.Color = new Color3(1, 1, 1)
+			glow_part.Transparency = 1
+
+			// animate
+			let t = TweenService.Create(glow_part, new TweenInfo(0.2), { Transparency: 0 })
+			t.Play()
+			t.Completed.Wait()
+			const instance = makePart(position, size)
+
+			t = TweenService.Create(glow_part, new TweenInfo(0.05), { Transparency: 1 })
+			t.Play()
+			t.Completed.Wait()
+			glow_part.Destroy()
+
+			this.setInstance(instance)
+			this.state = BlockState.Idle
+			resolve()
+		})
+	}
+
+	// make the block fade out
+	public fadeOut() {
+		return new Promise<void>((resolve) => {
+			if (!this.instance) return
+
+			this.state = BlockState.Animating
+
+			const glow_part = this.instance.Clone()
+			glow_part.Size = glow_part.Size.mul(1.01)
+			glow_part.Material = Enum.Material.Neon
+			glow_part.Color = new Color3(1, 1, 1)
+			glow_part.Transparency = 1
+			glow_part.Parent = Workspace
+
+			let t = TweenService.Create(glow_part, new TweenInfo(0.3), { Transparency: 0 })
+			t.Play()
+			t.Completed.Wait()
+			this.instance.Parent = undefined
+
+			wait(0.05)
+			this.state = BlockState.Idle
+			resolve()
+
+			t = TweenService.Create(glow_part, new TweenInfo(0.05), { Transparency: 1 })
+			t.Play()
+			t.Completed.Wait()
+			glow_part.Destroy()
+		})
+	}
+
+	public show() {
+		if (this.instance) {
+			this.instance.Parent = Workspace
+			return this
+		}
+
+		// average position of all block positions
+		const position = this.positions
+			.reduce((total, current) => total.add(current), v3.zero)
+			.div(this.positions.size())
+
+		const length = rotation_vector3_map[this.rotation].mul(this.length)
+		const size = new Vector3(math.max(length.X, 1), math.max(length.Y, 1), math.max(length.Z, 1))
+		this.setInstance(makePart(position, size))
+
+		return this
+	}
+
+	public hide() {
+		if (this.instance) {
+			this.instance.Parent = undefined
+		}
+	}
+
+	/**
+	 * @param direction The direction to move the block
+	 * @returns true or false depending if the player can move
+	 */
+	public move(direction: Vector3): boolean {
 		// very basic checking, maybe do more later
-		if (direction.Magnitude !== 1) return
+		if (this.state !== BlockState.Idle) return false
+		if (direction.Magnitude !== 1) return false
 
 		const block_z_offset =
 			this.rotation === Rotation.Up ? (this.length * direction.Z) / 2 : direction.Z / 2
@@ -155,6 +270,8 @@ export class Block {
 				}
 				break
 		}
+
+		return true
 	}
 
 	private wobbleAsync() {
@@ -174,8 +291,9 @@ export class Block {
 		}
 
 		// do the wobbling
+		const wobble_index = math.random(0, rotation_points.size())
 		for (let i = 0; i < 2; i++) {
-			const index = (0 + 2 * i + math.max(i - 1, 0)) % (rotation_points.size() - 1)
+			const index = (wobble_index + 2 * i + math.max(i - 1, 0)) % (rotation_points.size() - 1)
 			const p = rotation_points[index][0]
 			const dir = rotation_points[index][1]
 			const cframe = this.instance.CFrame
@@ -187,7 +305,7 @@ export class Block {
 				RunService.RenderStepped.Wait()
 
 				const mul = Math.roundTo(math.sin(math.rad(step * (180 / max_step))), 2)
-				const rotation = dir.mul(math.rad(mul) * (5 - i))
+				const rotation = dir.mul(math.rad(mul) * (4 - i))
 				const rotated_cframe = point.mul(CFrame.Angles(rotation.Z, rotation.Y, -rotation.X))
 				this.instance.CFrame = rotated_cframe.mul(offset)
 			}
@@ -265,21 +383,38 @@ export class Block {
 	}
 
 	public combine(block: Block): Block {
-		print([...this.positions, ...block.positions])
-		return new Block([...this.positions, ...block.positions])
+		print("combine", [...this.positions, ...block.positions])
+		return new Block([...this.positions, ...block.positions]).show()
 	}
 
-	public split() {}
+	public split(positions: Position[]): Block[] {
+		print(`Splitting block. Length: ${this.length}, Positions: ${positions.size()}`)
+
+		// Not enough locations to split block into ones
+		if (positions.size() < this.length) {
+			return []
+		}
+
+		// split block
+		const block_array: Block[] = []
+		for (const position of positions) {
+			const new_block = new Block([new Vector3(position.column, 0, position.row)])
+			block_array.push(new_block)
+		}
+		return block_array
+	}
 
 	// make the player fall with a given velocity, such as when completing a level or falling off the map
-	public fall(direction: Vector3 = v3.zero) {
+	public fall(direction: Vector3 = v3.zero, fall_time = 2) {
 		if (this.state === BlockState.Falling) return
 		if (!this.instance) return
+
+		print("creating falling part")
 		// this.instance is managed by the janitor so I create a clone that won't be deleted when destroy is called
 		const part = this.instance.Clone()
 		part.Parent = Workspace
 		part.Anchored = false
-		Debris.AddItem(part, 2)
+		Debris.AddItem(part, fall_time)
 		this.janitor.Cleanup()
 		this.state = BlockState.Falling
 
@@ -290,15 +425,12 @@ export class Block {
 		}
 	}
 
-	public destroy() {
-		print(`destroying part: ${this.instance}, state: ${this.state}`)
-		if (this.instance && this.state !== BlockState.Falling) {
-			this.state = BlockState.Falling
-			const part = this.instance.Clone()
-			part.Parent = Workspace
-			part.Anchored = false
-			Debris.AddItem(part, 2)
+	public destroy(fall_time: number = 2) {
+		print("Block destroy called.", fall_time, this.state)
+		if ((this.state === BlockState.Idle || this.state === BlockState.Rotating) && fall_time > 0) {
+			this.fall(v3.zero, fall_time)
 		}
+		this.state = BlockState.Destroyed
 		this.janitor.Cleanup()
 	}
 }
@@ -306,7 +438,7 @@ export class Block {
 export class BlockFactory {
 	constructor(private project: Game) {}
 
-	public createBlock(position: Vector3, direction = v3.up, length = 2) {
+	public createBlock(position: Vector3, direction = v3.up, length = DEFAULT_BLOCK_LENGTH) {
 		const positions = []
 		for (let i = 0; i < length; i++) {
 			positions.push(position.add(direction.mul(i)))

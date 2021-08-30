@@ -18,6 +18,7 @@
 	// 	"source.fixAll": true
 	// },
 
+	"workbench.editor.closeEmptyGroups": false,
 
 	"files.exclude": {
 		"**/.git": true,

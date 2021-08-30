@@ -1,14 +1,14 @@
 import { Janitor } from "@rbxts/janitor"
-import { ContextActionService, TweenService, UserInputService, Workspace } from "@rbxts/services"
+import { ContextActionService } from "@rbxts/services"
 import game_config from "shared/config/game-config"
-import { LevelData, levels } from "shared/level/level-config"
+import { LevelData } from "shared/level/level-config"
+import Signal from "shared/module/Signal"
 import { v3 } from "shared/utility/vector3-utils"
 import { settings } from "../settings/keybinds"
-import type { Block } from "./block"
 import { BlockFactory } from "./block"
 import { Board } from "./board"
 import { PlayerController } from "./player-controller"
-import type { Tile } from "./tiles"
+import { TeleporterTile, Tile } from "./tiles"
 
 export enum GameState {
 	Loading = "Loading",
@@ -21,13 +21,18 @@ export enum GameState {
 type LevelLoadingCallback = (height: number, width: number) => void
 type LevelCompleteCallback = Callback
 
+type JanitorProps = {
+	move_began: RBXScriptConnection
+	level_finished: RBXScriptConnection
+}
+
 const config = game_config
 export class Game {
-	private janitor = new Janitor<{ move_began: RBXScriptConnection }>()
+	private janitor = new Janitor<JanitorProps>()
 
 	// TODO: I should probably make a new board each time I load a level, it will be much cleaner
 	public board?: Board
-	public player?: PlayerController
+	public player?: PlayerController // player should probably be a member of board, game handles movement
 
 	private current_level?: LevelData
 	public state: GameState
@@ -36,20 +41,54 @@ export class Game {
 
 	private block_factory = new BlockFactory(this)
 
+	private level_complete_callback?: LevelCompleteCallback // delete this
+
 	// exposed events
-	public level_loading: RBXScriptSignal<LevelLoadingCallback>
-	public level_finished: RBXScriptSignal
+	public level_loading
+	public player_moved
+	public player_died
+	public teleporter_used
+	public button_pressed
+	public tile_broken
+	public level_finished
+
+	// use this instead
+	public events2 = {
+		level: {
+			finished: new Signal<(level: number, moves: number) => void>(),
+			loaded: new Signal<(level: number) => void>(),
+			restarted: new Signal<(level: number) => void>(),
+		},
+
+		player: {
+			moved: new Signal(),
+			died: new Signal(),
+		},
+	}
 
 	// event implementations
 	private events = {
 		level_loading: new Instance("BindableEvent") as BindableEvent<LevelLoadingCallback>,
-		level_finished: new Instance("BindableEvent"),
+		player_moved: new Instance("BindableEvent") as BindableEvent<Callback>,
+		player_died: new Instance("BindableEvent") as BindableEvent<Callback>,
+		teleporter_used: new Instance("BindableEvent") as BindableEvent<Callback>,
+		button_pressed: new Instance("BindableEvent") as BindableEvent<Callback>,
+		tile_broken: new Instance("BindableEvent") as BindableEvent<Callback>,
+		level_finished: new Instance("BindableEvent") as BindableEvent<LevelCompleteCallback>,
 	}
 
 	constructor() {
 		// init events
 		this.level_loading = this.events.level_loading.Event
 		this.level_finished = this.events.level_finished.Event
+		this.player_moved = this.events.player_moved.Event
+		this.player_died = this.events.player_died.Event // TODO: implement
+		this.teleporter_used = this.events.teleporter_used.Event // TODO: implement
+		this.button_pressed = this.events.button_pressed.Event // TODO: implement
+		this.tile_broken = this.events.tile_broken.Event // TODO: implement
+
+		// add events to janitor for cleanup
+		for (const [_, event] of pairs(this.events)) this.janitor.Add(event)
 
 		this.state = GameState.Loading
 
@@ -133,17 +172,26 @@ export class Game {
 		if (!this.player) return
 		if (!this.board) return
 
+		// update stats
+		this.events.player_moved.Fire()
+
 		const current_block = this.player.current_block
 		const tiles_touching = current_block
 			.getPositions()
 			.map((position) => this.board!.getTile(position.X, position.Z))
 
 		// handle stepping on tiles
-		tiles_touching.forEach((tile) => {
+		for (const tile of tiles_touching) {
 			if (tile) {
+				// temporary workaround to get teleporter working
+				// I should make the board handle this instead of the game ??
+				if (tile instanceof TeleporterTile && tile.isActivated(current_block)) {
+					this.onPlayerTeleport()
+					this.player.splitBlock(current_block, tile.targets)
+				}
 				tile.onStepped(current_block)
 			}
-		})
+		}
 
 		// handle falling here
 		if (current_block.isStanding()) {
@@ -189,6 +237,10 @@ export class Game {
 		this.check()
 	}
 
+	public onPlayerTeleport() {
+		this.events.teleporter_used.Fire()
+	}
+
 	public onPlayerLose() {
 		this.resetLevel()
 	}
@@ -200,37 +252,38 @@ export class Game {
 		}
 	}
 
-	private createPlayer(level: LevelData): PlayerController {
-		const player = new PlayerController(
-			this,
-			this.block_factory.fromStartPositions(level.start_positions)
-		)
-		player.onMoveCallback = (block, direction) => {
-			this.onPlayerMoveFinished(direction)
-		}
+	private createPlayer(level: LevelData): Promise<PlayerController> {
+		return new Promise((resolve, reject, onCancel) => {
+			const player = new PlayerController(
+				this,
+				this.block_factory.fromStartPositions(level.start_positions)
+			)
+			player.onMoveCallback = (block, direction) => {
+				this.onPlayerMoveFinished(direction)
+			}
 
-		this.janitor.Add(
-			player.move_began.Connect(() => {
-				this.onPlayerMoveBegan()
-			}),
-			"Disconnect",
-			"move_began"
-		)
+			this.janitor.Add(
+				player.move_began.Connect(() => {
+					this.onPlayerMoveBegan()
+				}),
+				"Disconnect",
+				"move_began"
+			)
 
-		return player
+			resolve(player)
+		})
 	}
 
-	public loadLevel(level: LevelData, level_complete_callback: LevelCompleteCallback) {
+	public async loadLevel(level: LevelData, level_complete_callback: LevelCompleteCallback) {
 		print(`Loading level: ${level.name}.`)
 
 		this.state = GameState.Loading
+		this.level_complete_callback = level_complete_callback
 		this.current_level = level
 
 		if (this.player) this.player.destroy()
+		if (this.board) this.board.destroy()
 
-		if (this.board) {
-			this.board.destroy()
-		}
 		this.board = new Board(this.board_position, level)
 
 		// fire event before draw call as draw is currently asyncronous
@@ -238,28 +291,45 @@ export class Game {
 		this.board.draw()
 
 		// spawn player after the board has been animated in
-		this.player = this.createPlayer(level)
-
-		this.state = GameState.Waiting
-		const c = this.level_finished.Connect(() => {
-			print(`Finished level ${level.name}`)
-			c.Disconnect()
-			level_complete_callback()
+		this.createPlayer(level).then((result) => {
+			this.player = result
+			this.state = GameState.Waiting
 		})
+
+		this.janitor.Add(
+			this.level_finished.Connect(() => {
+				if (this.level_complete_callback) {
+					print(`Finished level ${level.name}`)
+					this.level_complete_callback()
+				}
+			}),
+			"Disconnect",
+			"level_finished"
+		)
+	}
+
+	public exitLevel() {
+		this.unloadLevel()
+	}
+
+	public unloadLevel() {
+		this.state = GameState.Loading
+		this.player?.destroy()
+		this.board?.destroy()
+		this.level_complete_callback = undefined
+		this.janitor.Remove("level_finished")
 	}
 
 	public resetLevel() {
 		if (!this.board) return
 		if (!this.player) return
 		if (!this.current_level) return
+		print("resetting level")
 
-		this.state = GameState.Loading
+		this.loadLevel(this.current_level, this.level_complete_callback!)
+	}
 
-		this.player.destroy()
-		this.board.resetBoard()
-
-		this.player = this.createPlayer(this.current_level)
-
-		this.state = GameState.Waiting
+	public destroy() {
+		this.janitor.Cleanup()
 	}
 }

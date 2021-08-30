@@ -4,6 +4,7 @@ import { Block } from "../block"
 import ButtonTile from "./button-tile"
 import type { Board } from "../board"
 import Tile from "./tile"
+import { ButtonAction } from "shared/game/tiles/tile-types"
 
 const button_tile_mesh = ReplicatedStorage.assets.tiles.x_button
 const tile_size = button_tile_mesh.tile.Size
@@ -12,13 +13,13 @@ const tile_slide_offset = new Vector3(0, -13, 0)
 
 // this can be simplified into a single button class with traits
 export default class VerticalButtonTile extends ButtonTile {
-	constructor(board: Board, targets: Position[]) {
-		super(board, targets)
+	constructor(board: Board, targets: Position[], action: ButtonAction = ButtonAction.Toggle) {
+		super(board, targets, action)
 	}
 
 	onStepped(block: Block) {
 		if (block.isStanding()) {
-			this.activated()
+			this.activated(block)
 		}
 	}
 
@@ -31,7 +32,7 @@ export default class VerticalButtonTile extends ButtonTile {
 		Tile.tweenTile(instance.tile, position.sub(tile_size_y), completed)
 
 		return {
-			instance: instance,
+			instance: instance as BasePart | Model,
 			show: (parent: Instance) => {
 				instance.Parent = parent
 			},

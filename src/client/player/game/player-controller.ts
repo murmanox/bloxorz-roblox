@@ -4,7 +4,7 @@ import { v3 } from "shared/utility/vector3-utils"
 import { settings } from "../settings/keybinds"
 import { Block } from "./block"
 import { DisplayArrow } from "./display-arrow"
-import type { Game, GameState } from "./Game"
+import type { Game, GameState } from "./game"
 
 const left_vector = v3.left
 const right_vector = v3.right
@@ -41,6 +41,7 @@ export class PlayerController {
 	public arrow: DisplayArrow
 	private janitor = new Janitor()
 
+	public is_destroyed: boolean = false
 	public onMoveCallback?: (block: Block, direction: Vector3) => void
 
 	public move_began: RBXScriptSignal<MoveBeganCallback>
@@ -72,18 +73,24 @@ export class PlayerController {
 		this.janitor.Add(this.events.move_ended)
 
 		this.handleInput()
+
+		// animate blocks in
+		for (const block of this.blocks) {
+			block.spawn()
+		}
 	}
 
 	private onMove(action_name: keyof typeof action_direction_map) {
-		// is it bad to use a callback here instead of having a debounce on player controller? probably
-		this.events.move_began.Fire(this.current_block)
-
 		const direction = action_direction_map[action_name as keyof typeof action_direction_map]
-		this.current_block.move(direction)
+		const did_move = this.current_block.move(direction)
+		if (did_move) {
+			// is it bad to use a callback here instead of having a debounce on player controller? probably
+			this.events.move_began.Fire(this.current_block)
 
-		// check if block is next to another block, combine if so
-		this.checkCombine(this.current_block)
-		if (this.onMoveCallback) this.onMoveCallback(this.current_block, direction)
+			// check if block is next to another block, combine if so
+			this.checkCombine(this.current_block)
+			if (this.onMoveCallback) this.onMoveCallback(this.current_block, direction)
+		}
 	}
 
 	public nextBlock() {
@@ -98,6 +105,7 @@ export class PlayerController {
 	// this can definitely be optimised
 	public checkCombine(block: Block) {
 		// this would probably be cool if I could check up, down, left and right on the board
+		// don't use this.current_block here to prevent bugs !!
 		const current_block = this.current_block
 
 		// standing blocks can't be combined
@@ -142,8 +150,8 @@ export class PlayerController {
 					this.blocks.remove(this.blocks.findIndex((find_block) => find_block === current_block))
 					this.blocks.remove(this.blocks.findIndex((find_block) => find_block === other_block))
 
-					current_block.destroy()
-					other_block.destroy()
+					current_block.destroy(0)
+					other_block.destroy(0)
 
 					this.blocks.push(new_block)
 					this.current_block = new_block
@@ -163,6 +171,34 @@ export class PlayerController {
 	}
 
 	public checkCombineAll() {}
+
+	public splitBlock(block: Block, positions: Position[]) {
+		// check if block can be split
+
+		// play split animation
+		block
+			.fadeOut()
+			.then(() => {
+				if (this.is_destroyed) {
+					// this is kind of stupid, right?
+					return
+				}
+
+				// spawn new block instances
+				const new_blocks = block.split(positions)
+
+				this.blocks.remove(this.blocks.findIndex((find_block) => find_block === block))
+				this.blocks = [...this.blocks, ...new_blocks]
+				this.current_block = new_blocks[0]
+
+				// animate new block instances
+				return Promise.all(new_blocks.map((block) => block.fadeIn()))
+			})
+			.then(() => {
+				// destroy original block
+				block.destroy(0)
+			})
+	}
 
 	public handleInput() {
 		ContextActionService.BindAction(
@@ -198,8 +234,10 @@ export class PlayerController {
 	// TODO: use the same controller for everything and overwrite the blocks?
 	// deletes the player controller and all properties and methods
 	public destroy() {
+		this.is_destroyed = true
 		this.janitor.Cleanup()
 		ContextActionService.UnbindAction(BindActionNames.Space)
+		print("destroy player called")
 		this.blocks.forEach((block) => {
 			block.destroy()
 		})
