@@ -1,6 +1,6 @@
 import Roact from "@rbxts/roact"
 import Flipper from "@rbxts/flipper"
-import MenuFrame from "../user-interface/common/components/menu-frame"
+import MenuFrame from "../user-interface/components/common/menu-frame"
 import { RoactBinding } from "client/user-interface/roact-binding"
 import { Math } from "shared/utility/math"
 

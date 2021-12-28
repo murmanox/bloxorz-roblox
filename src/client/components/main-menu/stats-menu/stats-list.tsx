@@ -1,10 +1,13 @@
 import Roact from "@rbxts/roact"
 import RoactRodux from "@rbxts/roact-rodux"
-import { RoactBinding } from "client/user-interface/roact-binding"
-import { PlayerStoreState } from "shared/rodux/reducer"
 import StatsMenuCategory, { StatCategory } from "./stats-menu-category"
 import { StatItem } from "./stats-menu-item"
 import { String } from "shared/utility/string-utils"
+import { PlayerStatsState } from "client/user-interface/store/stats/types"
+import { AppState } from "client/user-interface/store"
+import { hooked } from "@rbxts/roact-hooked"
+import { useSelector } from "@rbxts/roact-rodux-hooked"
+import inspect from "@rbxts/inspect"
 
 interface StatInfo {
 	name: string
@@ -25,7 +28,7 @@ const category_info_map: CategoryInfoMap = {
 	tiles: { display_text: "TILES", order: 3 },
 }
 
-type StatInfoMap = { [K in keyof PlayerStoreState]: StatInfo }
+type StatInfoMap = { [K in keyof PlayerStatsState]: StatInfo }
 const stat_map: StatInfoMap = {
 	total_movement: { name: "Movements", format: String.formatNumber, category: "gameplay" },
 	total_buttons_pressed: {
@@ -48,11 +51,11 @@ const stat_map: StatInfoMap = {
 	},
 }
 
-const mapStateToProps = (state: PlayerStoreState) => {
+const mapStateToProps = (state: AppState) => {
 	const stat_category_map = new Map<string, StatItem[]>()
 
 	const stat_categories: StatCategory[] = []
-	for (const [stat_name, stat_value] of pairs(state)) {
+	for (const [stat_name, stat_value] of pairs(state.stats)) {
 		const stat_info = stat_map[stat_name]
 
 		// Get the display name of the state and get its formatting function
@@ -92,17 +95,17 @@ const mapStateToProps = (state: PlayerStoreState) => {
 			return { ...category, ...{ name: category_info_map[category.name as Category].display_text } }
 		})
 
-	return { Categories: props }
+	return props
 }
 
-interface StatsListProps {
-	Categories: StatCategory[]
-}
+interface Props {}
 
-const StatsList = RoactRodux.connect(mapStateToProps)((props: StatsListProps): Roact.Element => {
+const StatsList = hooked<Props>((props) => {
+	const categories = useSelector((state: AppState) => mapStateToProps(state))
+
 	return (
 		<>
-			{props.Categories.map((category) => {
+			{categories.map((category) => {
 				return <StatsMenuCategory Category={category} />
 			})}
 		</>

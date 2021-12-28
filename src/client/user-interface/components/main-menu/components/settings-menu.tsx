@@ -1,5 +1,5 @@
 import Roact from "@rbxts/roact"
-import MainMenuFrame from "client/user-interface/main-menu/components/main-menu-frame"
+import MainMenuFrame from "client/user-interface/components/main-menu/components/main-menu-frame"
 
 interface SettingsMenuProps {
 	Hide: boolean

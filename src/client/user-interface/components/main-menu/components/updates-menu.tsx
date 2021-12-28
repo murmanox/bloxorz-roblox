@@ -7,7 +7,7 @@ interface Props {
 
 const UpdatesMenu = (props: Props): Roact.Element => {
 	return (
-		<MainMenuFrame HeaderText="UPDATES" Size={UDim2.fromScale(1, 1)} Hide={props.Hide}>
+		<MainMenuFrame HeaderText="UPDATES" Size={new UDim2(1, -10, 1, 0)} Hide={props.Hide}>
 			<textlabel
 				Text={"NOTHING HERE :)"}
 				Size={new UDim2(0.9, 0, 0, 100)}

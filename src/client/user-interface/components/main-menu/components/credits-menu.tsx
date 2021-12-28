@@ -1,5 +1,5 @@
 import Roact from "@rbxts/roact"
-import ScaledWrappedTextLabel from "client/user-interface/common/components/scaled-wrapped-textlabel"
+import ScaledWrappedTextLabel from "client/user-interface/components/common/scaled-wrapped-textlabel"
 import { ui_config } from "shared/config/credits-config"
 import MainMenuFrame from "./main-menu-frame"
 
