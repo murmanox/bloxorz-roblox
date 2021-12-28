@@ -10,6 +10,7 @@ function getPlayerStats(player: Player): PlayerStats {
 	return player_stats ? player_stats : { ...default_stats }
 }
 
+//TODO: Profile Service
 // TODO: leaky bucket to prevent spamming remotes
 function onPlayerMoved(player: Player) {
 	const stats = getPlayerStats(player)
