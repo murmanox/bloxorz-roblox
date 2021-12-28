@@ -15,7 +15,7 @@
 		"prettier"
 	],
 	"rules": {
-		"prettier/prettier": "warn",
+		"prettier/prettier": "off",
 		"@typescript-eslint/no-explicit-any": ["off", {"ignoreRestArgs": true}],
 		"prefer-const": "off",
 		"no-autofix/prefer-const": "warn",

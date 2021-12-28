@@ -3,7 +3,11 @@
 	"globIgnorePaths": [
 		"**/package.json",
 		"**/tsconfig.json",
-		"**/LICENSE.txt"
+		"**/LICENSE.txt",
+		"**/.eslintrc.json",
+		"**/.gitignore",
+		"**/.vscode",
+		"**/testez-companion.toml"
 	],
 	"tree": {
 		"$className": "DataModel",

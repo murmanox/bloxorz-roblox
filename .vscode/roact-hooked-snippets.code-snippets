@@ -1,0 +1,18 @@
+{
+	"Roact Hooked FC": {
+		"prefix":["hookedFC"],
+		"description": "Create a hooked function component",
+		"body": [
+			"import Roact from \"@rbxts/roact\"",
+			"import { hooked } from \"@rbxts/roact-hooked\"",
+			"",
+			"interface Props {${2}}",
+			"",
+			"const ${1:$TM_FILENAME_BASE} = hooked<Props>((props) => {",
+				"\treturn ${0:<></>}",
+			"})",
+			"",
+			"export default ${1:$TM_FILENAME_BASE}"
+		]
+	},
+}
