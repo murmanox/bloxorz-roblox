@@ -1,0 +1,60 @@
+
+	// this has been moved into the board
+	// Called when the player moves a block. Calls the onStepped method for tiles that the current block is touching.
+	public onPlayerMoveFinished(direction: Vector3) {
+		// if (!this.board) return
+		// // update stats
+		// this.events.player.moved.fire()
+		// const current_block = this.player.current_block
+		// const tiles_touching = current_block
+		// 	.getPositions()
+		// 	.map((position) => this.board!.getTile(position.X, position.Z))
+		// // handle stepping on tiles
+		// for (const tile of tiles_touching) {
+		// 	if (tile) {
+		// 		// temporary workaround to get teleporter working
+		// 		// I should make the board handle this instead of the game ??
+		// 		if (tile instanceof TeleporterTile && tile.isActivated(current_block)) {
+		// 			this.onPlayerTeleport()
+		// 			this.player.teleport(current_block, tile.targets)
+		// 		}
+		// 		tile.onStepped(current_block)
+		// 	}
+		// }
+		// // handle falling here
+		// if (current_block.isStanding()) {
+		// 	// will only be touching one tile
+		// 	const tile = tiles_touching[0]
+		// 	// TODO: implement unique falling mechanics per tile, such as WoodenTile and EndTile
+		// 	if (!tile || tile.isLosingPosition(current_block)) {
+		// 		current_block.fall(direction)
+		// 	}
+		// } else {
+		// 	const testLosing = (tile: 0 | Tile) => {
+		// 		return tile === 0 || tile.isLosingPosition(current_block)
+		// 	}
+		// 	// check if both tiles are in losing positions
+		// 	const both_losing = tiles_touching.every(testLosing)
+		// 	if (both_losing) {
+		// 		current_block.fall(direction)
+		// 	} else {
+		// 		// check if only one tile is in a losing position
+		// 		const one_losing = tiles_touching.some(testLosing)
+		// 		if (one_losing) {
+		// 			const current_positions = current_block.getPositions()
+		// 			const positions_total = current_positions.reduce(
+		// 				(total, position) => total.add(position),
+		// 				v3.zero
+		// 			)
+		// 			const losing_pos = current_positions.find((position) => {
+		// 				return testLosing(this.board!.getTile(position.X, position.Z))
+		// 			}) as Vector3
+		// 			// losing position will be 1 apart from a non-losing one, so we can subtract it twice
+		// 			// to get the direction that the losing position is relative to the non-losing one.
+		// 			const fall_direction = positions_total.sub(losing_pos.mul(2)).mul(-1)
+		// 			current_block.fall(fall_direction)
+		// 		}
+		// 	}
+		// }
+		// this.check()
+	}

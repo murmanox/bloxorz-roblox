@@ -1,111 +1,78 @@
-import { Players, StarterGui, Workspace } from "@rbxts/services"
-import { Game } from "./player/game/game"
-import { LevelData, levels } from "shared/level/level-config"
 import { Janitor } from "@rbxts/janitor"
-import { PlayerEvents } from "shared/config/network-events"
-import Store from "shared/rodux/store"
-import { Actions } from "shared/rodux/actions"
 import Roact from "@rbxts/roact"
-import PlayerStore from "shared/rodux/store"
-import MainMenu from "./components/main-menu/main-menu"
-import { StoreProvider } from "@rbxts/roact-rodux"
-import InterfaceStore from "./rodux/menu-store/store"
-import { TopBar } from "./user-interface/top-bar/components/top-bar"
-import { MovementActions } from "./user-interface/top-bar/rodux/movement-actions"
+import { Players, StarterGui, Workspace } from "@rbxts/services"
+import { BoardState } from "./player/game/board/board"
+import { scaleCamera } from "./player/game/camera"
+import { Game } from "./player/game/game"
+import App from "./user-interface/components/app"
+import { store } from "./user-interface/store"
+import { ADD_TIME_PLAYED } from "./user-interface/store/stats/types"
+
+//#region Interface
 
 // since we don't load the player's character we have to manually copy StarterGui to PlayerGui
 StarterGui.SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
 const player_gui = Players.LocalPlayer.WaitForChild("PlayerGui") as PlayerGui
 
-const app = new Game()
-app.player_moved.Connect(() => {
-	// update local counter
-	Store.dispatch(Actions.addMovement())
-	InterfaceStore.dispatch(MovementActions.addMovement())
+// Initialise the UI and display it to the player
+const element = (
+	<screengui IgnoreGuiInset={true} ZIndexBehavior={Enum.ZIndexBehavior.Sibling}>
+		<App />
+	</screengui>
+)
 
-	// tell server to update stats
-	PlayerEvents.Moved.fireServer()
+// I can probably improve this later
+task.delay(1, () => {
+	while (true) {
+		store.dispatch({ type: ADD_TIME_PLAYED, seconds: 1 })
+		wait(1)
+	}
 })
 
-function scaleCamera(height: number, width: number) {
-	// position camera relative to the board
-	const camera = Workspace.CurrentCamera
-	if (!camera) return
+Roact.mount(element, player_gui)
 
-	const x = (width - 1) / 2
-	const y = 0.5
-	const z = (height - 1) / 2
+//#endregion
 
-	camera.CameraType = Enum.CameraType.Scriptable
-	const look_at = new Vector3(x, y, z)
-	const size = new Vector3(width, 0, height)
+const app = new Game()
 
-	// need to dynamically zoom camera based on screen and level size
-	const cf = new CFrame(look_at.add(new Vector3(-0.27, 0.65, 1)), look_at)
-	camera.FieldOfView = 1
+// TODO: dispatch inside game class
+// app.events.player.moved.connect(() => {
+// 	// update local counter
+// 	store.dispatch({ type: ADD_MOVEMENT })
 
-	const screen_size = camera.ViewportSize.sub(new Vector2(0, 36)) // minus gui inset
-	const board_ratio = math.max(1, width / height)
-	const aspect_ratio = math.min(board_ratio, screen_size.X / screen_size.Y)
-	const extents = size.div(2).Magnitude
-	let distance = (extents * 1.2) / math.tan(math.rad(camera.FieldOfView / 2))
-
-	distance *= 1.1
-	distance /= aspect_ratio
-	camera.CFrame = cf.mul(new CFrame(0, 0, distance))
-}
+// 	// tell server to update stats
+// 	PlayerEvents.Moved.fireServer()
+// })
 
 interface JanitorProps {
 	camera: RBXScriptConnection
 }
 
 const janitor = new Janitor<JanitorProps>()
-app.level_loading.Connect((height, width) => {
-	scaleCamera(height, width)
+app.board.onStateChange((state) => {
+	if (state !== BoardState.Loading) return
+
+	const [position, size] = [app.board.position, app.board.getSize()]
+	scaleCamera(position, size)
 	janitor.Add(
 		Workspace.CurrentCamera!.GetPropertyChangedSignal("ViewportSize").Connect(() => {
-			scaleCamera(height, width)
+			scaleCamera(position, size)
 		}),
 		"Disconnect",
 		"camera"
 	)
 })
 
-function incrementLevel(index: number) {
-	return [
-		levels[index],
-		() => {
-			app.loadLevel(...incrementLevel(index + 1))
-		},
-	] as [LevelData, () => void]
-}
+store.changed.connect((state, old_state) => {
+	if (state.game.running && !old_state.game.running) {
+		// start game
+		const next_level = state.game.level !== old_state.game.level ? state.game.level : undefined
+		app.startGame(next_level)
+	}
 
-// Initialise the UI and display it to the player
-const element = (
-	<screengui IgnoreGuiInset={true} ZIndexBehavior={Enum.ZIndexBehavior.Sibling}>
-		<frame Size={UDim2.fromScale(1, 1)} Transparency={1}>
-			<StoreProvider store={InterfaceStore}>
-				<MainMenu />
-				<TopBar />
-			</StoreProvider>
-		</frame>
-	</screengui>
-)
-
-InterfaceStore.changed.connect((state, old_state) => {
-	if (state.main_menu.menu !== old_state.main_menu.menu && state.main_menu.menu === "play") {
-		delay(1, () => {
-			const start_level = 0
-			app.loadLevel(...incrementLevel(start_level))
-		})
+	// check if game has been stopped
+	if (!state.game.running && old_state.game.running) {
+		// stop game
+		app.stopGame()
 	}
 })
-
-spawn(() => {
-	while (true) {
-		wait(1)
-		PlayerStore.dispatch(Actions.addTimePlayed(1))
-	}
-})
-
-Roact.mount(element, player_gui)
