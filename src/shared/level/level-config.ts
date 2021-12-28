@@ -1,4 +1,4 @@
-import { ButtonAction } from "shared/game/tiles/tile-types"
+import { ButtonAction } from "shared/game/tiles/ButtonAction"
 import { v3 } from "shared/utility/vector3-utils"
 
 // greyscale colour 84, 92, 255
@@ -84,6 +84,7 @@ const level2 = {
 		"1111tt1111tt111",
 		"1111  1111     ",
 	],
+
 	tiles: new Map<string, CustomTile>([
 		[
 			"O",
@@ -383,16 +384,16 @@ const level10 = {
 	]),
 }
 
-// TODO: Clean this up
-export const levels: LevelData[] = [
-	level1,
-	level2,
-	level3,
-	level4,
-	level5,
-	level6,
-	level7,
-	level8,
-	level9,
-	level10,
-]
+// // TODO: Clean this up
+// export const levels: LevelData[] = [
+// 	level1,
+// 	level2,
+// 	level3,
+// 	level4,
+// 	level5,
+// 	level6,
+// 	level7,
+// 	level8,
+// 	level9,
+// 	level10,
+// ]
