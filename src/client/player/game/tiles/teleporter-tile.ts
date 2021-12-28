@@ -1,37 +1,47 @@
 import { ReplicatedStorage, Workspace } from "@rbxts/services"
-import { v3 } from "shared/utility/vector3-utils"
-import { Block } from "../block"
-import Tile from "./tile"
-import VerticalButtonTile from "./vertical-button-tile"
+import { Block } from "../../block/block"
+import { Board } from "../board/board"
+import BaseButtonTile from "./base-button-tile"
+import { ButtonAction } from "../../../../shared/game/tiles/ButtonAction"
+import { TileModel } from "./types"
 
-const button_tile_mesh = ReplicatedStorage.assets.tiles.teleporter
-const tile_size = button_tile_mesh.tile.Size
-const tile_size_y = tile_size.mul(v3.up).div(2)
-const tile_slide_offset = new Vector3(0, -13, 0)
+const model = ReplicatedStorage.assets.tiles.teleporter as TileModel
+export default class TeleportTile extends BaseButtonTile {
+	protected instance: TileModel
 
-export default class TeleportTile extends VerticalButtonTile {
+	constructor(
+		board: Board,
+		position: Vector3,
+		targets: BoardPosition[],
+		action: ButtonAction = ButtonAction.Toggle
+	) {
+		super(board, position, targets, action, model)
+		this.instance = this.makeTile(this.out_position)
+	}
+
 	public isActivated(block: Block): boolean {
 		return block.isStanding()
 	}
 
-	activated(block: Block) {}
+	public activated(block: Block) {
+		// play split animation
+		block
+			.blinkOut()
+			.then(() => {
+				// spawn new block instances
+				const new_blocks = block.split(this.targets)
 
-	draw(position: Vector3, completed: Callback) {
-		const tile_out_position = position.add(tile_slide_offset)
-		const instance = button_tile_mesh.Clone()
-		instance.SetPrimaryPartCFrame(new CFrame(tile_out_position))
+				// this.blocks.remove(this.blocks.findIndex((find_block) => find_block === block))
+				// this.blocks = [...this.blocks, ...new_blocks]
+				// this.current_block = new_blocks[0]
 
-		instance.Parent = Workspace
-		Tile.tweenTile(instance.tile, position.sub(tile_size_y), completed)
-
-		return {
-			instance: instance as BasePart | Model,
-			show: (parent: Instance) => {
-				instance.Parent = parent
-			},
-			callback: (animate_out_callback: Callback) => {
-				Tile.tweenTile(instance.tile, tile_out_position, animate_out_callback)
-			},
-		}
+				// animate new block instances
+				return Promise.all(new_blocks.map((block) => block.blinkIn(this.board.position)))
+			})
+			.then(() => {
+				// destroy original block
+				block.destroy(0)
+			})
 	}
+	// }
 }

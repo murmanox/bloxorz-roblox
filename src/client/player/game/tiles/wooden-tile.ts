@@ -1,14 +1,21 @@
-import Tile from "./tile"
-import { Block } from "../block"
+import { Block } from "../../block/block"
+import { ReplicatedStorage } from "@rbxts/services"
+import BaseTile from "./base-tile"
+import { Board } from "../board/board"
+import { TileModel } from "./types"
 
-export default class WoodenTile extends Tile {
-	private static colour = Color3.fromRGB(255, 106, 0)
+const model = ReplicatedStorage.assets.tiles.wooden as TileModel
+export default class WoodenTile extends BaseTile {
+	protected instance: TileModel
+
+	constructor(board: Board, position: Vector3) {
+		super(board, position, model)
+		this.instance = this.makeTile(this.out_position)
+	}
 
 	onStepped(block: Block) {
 		if (block.isStanding()) {
 			const instance = this.instance
-			if (instance === undefined) return
-
 			const part = instance.IsA("BasePart") ? instance : instance.PrimaryPart!
 
 			// break tile
@@ -20,11 +27,5 @@ export default class WoodenTile extends Tile {
 
 	isLosingPosition(block: Block) {
 		return block.isStanding()
-	}
-
-	draw(position: Vector3, completed: Callback) {
-		const tile_info = super.draw(position, completed, { colour: WoodenTile.colour })
-		this.instance = tile_info.instance
-		return tile_info
 	}
 }
