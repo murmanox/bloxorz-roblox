@@ -1,5 +1,10 @@
-import Make from "@rbxts/make"
 import { ContentProvider, Debris, ReplicatedStorage, SoundService } from "@rbxts/services"
+
+// TODO: preload
+
+type Modifiers = {
+	PlaybackSpeed?: number
+}
 
 class SoundFile {
 	instance: Sound
@@ -21,11 +26,19 @@ class SoundFile {
 	stop() {
 		this.instance.Stop()
 	}
+
+	// TODO: support sound effects
+	applyModifiers(modifiers: Modifiers) {
+		for (const [k, v] of pairs(modifiers)) {
+			this.instance[k] = v
+		}
+	}
 }
 
 const audio_assets = ReplicatedStorage.assets.audio
 const sounds = {
 	interface_mouse_over: new SoundFile(audio_assets.interface.button_mouse_over),
+	stone_impact: new SoundFile(audio_assets.stone_impact),
 }
 
 class SoundManager<T extends { [key: string]: SoundFile }> {
@@ -35,8 +48,9 @@ class SoundManager<T extends { [key: string]: SoundFile }> {
 		this.sounds = sounds
 	}
 
-	play(sound: keyof T) {
+	play(sound: keyof T, modifiers?: Modifiers) {
 		const sound_file = this.sounds[sound] as SoundFile
+		if (modifiers) sound_file.applyModifiers(modifiers)
 		if (sound_file) {
 			sound_file.play()
 		}
