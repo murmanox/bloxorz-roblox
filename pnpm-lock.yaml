@@ -45,7 +45,7 @@ dependencies:
   '@rbxts/janitor': 1.1.3
   '@rbxts/lerp': github.com/murmanox/lerp/88c81ff0f6fb2a52d22f2f20ba3a427a2bca2926
   '@rbxts/llama': 1.1.0-ts2
-  '@rbxts/loli-tween-animator': github.com/murmanox/loli-tween-animator/bd58154f9d6db7b9b6cf9ac96e192855080a6061
+  '@rbxts/loli-tween-animator': github.com/murmanox/loli-tween-animator/6cec662fbaf08ed9515ca4b2e53b88e4f94d56cb
   '@rbxts/maid': 1.0.0-ts.1
   '@rbxts/make': 1.0.6
   '@rbxts/object-utils': 1.0.4
@@ -1531,8 +1531,8 @@ packages:
     version: 1.0.0
     dev: false
 
-  github.com/murmanox/loli-tween-animator/bd58154f9d6db7b9b6cf9ac96e192855080a6061:
-    resolution: {tarball: https://codeload.github.com/murmanox/loli-tween-animator/tar.gz/bd58154f9d6db7b9b6cf9ac96e192855080a6061}
+  github.com/murmanox/loli-tween-animator/6cec662fbaf08ed9515ca4b2e53b88e4f94d56cb:
+    resolution: {tarball: https://codeload.github.com/murmanox/loli-tween-animator/tar.gz/6cec662fbaf08ed9515ca4b2e53b88e4f94d56cb}
     name: '@rbxts/loli-tween-animator'
     version: 1.0.0
     dependencies:
