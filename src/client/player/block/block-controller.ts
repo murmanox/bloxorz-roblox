@@ -1,12 +1,10 @@
+import Signal from "@rbxts/good-signal"
 import { Janitor } from "@rbxts/janitor"
-import { ContextActionService, RunService, UserInputService } from "@rbxts/services"
 import { v3 } from "shared/utility/vector3-utils"
-import { PlayerInput } from "../game/player-input"
-import { settings } from "../settings/keybinds"
-import { Block } from "./block"
 import { DisplayArrow } from "../game/display-arrow"
-import type { Game, GameState } from "../game/game"
-import Maid from "@rbxts/maid"
+import type { Game } from "../game/game"
+import { PlayerInput } from "../game/player-input"
+import { Block } from "./block"
 
 const left_vector = v3.left
 const right_vector = v3.right
@@ -41,6 +39,8 @@ export class BlockController {
 
 	private is_moving = false
 
+	public move_finished = new Signal()
+
 	constructor(private app: Game) {
 		this.player_input = app.player_input
 
@@ -63,12 +63,10 @@ export class BlockController {
 		this.is_moving = true
 
 		const direction = action_direction_map[action_name as keyof typeof action_direction_map]
-		this.current_block
-			.move(direction)
-			.then(() => {
-				this.checkCombine()
-			})
-			.finally(() => (this.is_moving = false))
+		this.current_block.move(direction).finally(() => {
+			this.is_moving = false
+			this.move_finished.fire()
+		})
 	}
 
 	public nextBlock() {

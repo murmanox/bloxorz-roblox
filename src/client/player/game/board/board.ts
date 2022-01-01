@@ -1,5 +1,7 @@
 import Signal from "@rbxts/good-signal"
+import { LevelConfig } from "shared/config/levels/level-types"
 import { LevelData } from "types/interfaces/level-types"
+import { ITile } from "types/interfaces/tile-types"
 import { BlockController } from "../../block/block-controller"
 import { Game } from "../game"
 import { BoardLoader } from "./board-loader"
@@ -37,6 +39,8 @@ export class Board {
 		this.block_controller = new BlockController(this.app)
 		this.loader = new BoardLoader(this)
 
+		this.block_controller.move_finished.connect(() => this.check())
+
 		const setState = (state: BoardState) => () => this.setState(state)
 		this.loader.onLoad(setState(BoardState.Loading))
 		this.loader.onLoaded(setState(BoardState.Loaded))
@@ -54,7 +58,7 @@ export class Board {
 		this.on_state_changed.fire(this.state, old_state)
 	}
 
-	public setLevel(level_data: LevelData | BoardEnums.EMPTY) {
+	public setLevel(level_data: LevelConfig | BoardEnums.EMPTY) {
 		this.loader.setLevel(level_data === Board.EMPTY ? undefined : level_data)
 	}
 
@@ -75,7 +79,18 @@ export class Board {
 		}
 
 		// check combine
+		this.block_controller.checkCombine()
+
 		// run effects
+		const promises: Promise<unknown>[] = []
+		this.block_controller.blocks.forEach((block) => {
+			const tiles = block.getPositions().map((p) => this.getTile(p.X, p.Z))
+			tiles.forEach((t) => promises.push(t.stepped(block)))
+		})
+
+		Promise.all(promises).then(() => print("stepped done"))
+
+		// if effects ran check again
 	}
 
 	public checkCombine() {}
@@ -88,6 +103,10 @@ export class Board {
 
 	public getSize(): Vector2 {
 		return this.loader.size
+	}
+
+	public getTile(x: number, y: number): ITile {
+		return this.tiles.getTile(x, y)
 	}
 
 	public isLoaded(): boolean {
