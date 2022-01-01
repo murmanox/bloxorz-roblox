@@ -1,7 +1,9 @@
 import Roact from "@rbxts/roact"
 import ScaledWrappedTextLabel from "client/user-interface/components/common/scaled-wrapped-textlabel"
-import { ui_config } from "shared/config/credits-config"
+import { GAME_CONFIG } from "shared/config"
 import MainMenuFrame from "./main-menu-frame"
+
+const config = GAME_CONFIG.credits
 
 interface CreditsMenuProps {
 	Hide: boolean
@@ -13,7 +15,7 @@ const CreditsMenu = (props: CreditsMenuProps): Roact.Element => {
 		<MainMenuFrame HeaderText="CREDITS" Size={new UDim2(1, -10, 1, 0)} Hide={props.Hide}>
 			<ScaledWrappedTextLabel
 				LayoutOrder={0}
-				Text={ui_config.intro}
+				Text={config.intro}
 				TextColor3={new Color3(1, 1, 1)}
 				BackgroundTransparency={1}
 				FontSize={Enum.FontSize.Size28}
@@ -22,7 +24,7 @@ const CreditsMenu = (props: CreditsMenuProps): Roact.Element => {
 
 			<imagelabel
 				LayoutOrder={1}
-				Image={ui_config.credit_image.image}
+				Image={config.credit_image.image}
 				Size={UDim2.fromScale(0.8, 1)}
 				ScaleType={Enum.ScaleType.Fit}
 				BackgroundTransparency={1}
@@ -36,12 +38,12 @@ const CreditsMenu = (props: CreditsMenuProps): Roact.Element => {
 				>
 					<uistroke Thickness={2} />
 				</frame>
-				<uiaspectratioconstraint AspectRatio={ui_config.credit_image.aspect_ratio} />
+				<uiaspectratioconstraint AspectRatio={config.credit_image.aspect_ratio} />
 			</imagelabel>
 
 			<ScaledWrappedTextLabel
 				LayoutOrder={2}
-				Text={ui_config.long}
+				Text={config.long}
 				TextColor3={new Color3(1, 1, 1)}
 				BackgroundTransparency={1}
 				FontSize={Enum.FontSize.Size28}

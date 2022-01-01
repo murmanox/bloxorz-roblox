@@ -1,7 +1,7 @@
 import { TweenService, Workspace } from "@rbxts/services"
 import soundManager from "client/modules/sound-manager"
+import tile_config from "shared/config/tile-config"
 import { ButtonAction } from "shared/game/tiles/ButtonAction"
-import { tile_config } from "shared/game/tiles/tile-config"
 import { Math } from "shared/utility/math"
 import { TweenPromise } from "shared/utility/tween"
 import { v3 } from "shared/utility/vector3-utils"

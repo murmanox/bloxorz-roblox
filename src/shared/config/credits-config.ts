@@ -1,6 +1,4 @@
-import { Players } from "@rbxts/services"
-
-export const ui_config = {
+export default {
 	intro: (
 		"Ro-Bloxorz is (heavily) inspired by a browser game created by Damien Clarke in 2007." +
 		" He is a big cutie and a very cool and handsome man." +
