@@ -1,3 +1,4 @@
+import { loli } from "@rbxts/loli-tween-animator"
 import { RunService, Workspace } from "@rbxts/services"
 import { Math } from "shared/utility/math"
 import { TweenPromise } from "shared/utility/tween"
@@ -99,34 +100,28 @@ namespace Effects {
 	}
 
 	export function rotateAround(
-		instance: BasePart,
+		instance: PVInstance,
 		rotation_point: Vector3,
 		direction: Vector3,
 		angle: number,
 		speed: number
 	): VoidPromise {
-		return new Promise((resolve, reject, onCancel) => {
-			const cframe = instance.CFrame
-			const point = new CFrame(rotation_point)
-			const offset = point.Inverse().mul(cframe)
+		const point = new CFrame(rotation_point)
+		const offset = point.Inverse().mul(instance.GetPivot())
 
-			// rotate block by 90 degrees around rotation point and resolve promise
-			let total_rotation = 0
-			const update = (dt: number) => {
-				total_rotation = math.clamp(total_rotation + dt * speed, 0, angle)
-
-				const rotation = direction.mul(total_rotation)
-				const rotated_cframe = point.mul(CFrame.Angles(rotation.Z, rotation.Y, -rotation.X))
-				instance.CFrame = rotated_cframe.mul(offset)
-
-				if (total_rotation === angle) {
-					resolve()
-					c.Disconnect()
-				}
-			}
-
-			const c = RunService.RenderStepped.Connect(update)
-		})
+		// Tween block's rotation around rotation point
+		return loli
+			.to(0, {
+				goal: angle,
+				duration: angle / speed,
+				ease: "none",
+				onUpdate: (v) => {
+					const rotation = direction.mul(v)
+					const rotated_cframe = point.mul(CFrame.Angles(rotation.Z, rotation.Y, -rotation.X))
+					instance.PivotTo(rotated_cframe.mul(offset))
+				},
+			})
+			.then()
 	}
 }
 
