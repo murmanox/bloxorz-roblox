@@ -1,8 +1,8 @@
 import inspect from "@rbxts/inspect"
 import { Janitor } from "@rbxts/janitor"
 import { Debris, RunService, Workspace } from "@rbxts/services"
-import { block_config } from "shared/config/block-config"
 import Effects from "client/player/game/effects/effects"
+import { GAME_CONFIG } from "shared/config"
 import { Math, roundTo } from "shared/utility/math"
 import { TweenPromise } from "shared/utility/tween"
 import { v3, Vector3Math } from "shared/utility/vector3-utils"
@@ -18,7 +18,7 @@ const rotation_point_offset = new Vector3(0.5, 0, 0.5)
 const x_rotation = Math.HALF_PI
 const z_rotation = -Math.HALF_PI
 
-const config = block_config
+const config = GAME_CONFIG.block
 export class Block implements IBlock {
 	public positions: Vector3[]
 	public rotation: Vector3
