@@ -22,19 +22,34 @@ export class PlayerInput {
 		UserInputService.InputBegan.Connect((input) => this.onKeyPress(input))
 	}
 
-	onMove(callback: VoidCallback<OnMove>) {
+	/**
+	 * Connects a function to a signal that's fired each frame when a movement key is pressed
+	 * @param callback The function to call when the signal is fired
+	 * @returns A signal connection
+	 */
+	public onMove(callback: VoidCallback<OnMove>) {
 		return this.on_move.connect(callback)
 	}
 
-	onSwap(callback: VoidCallback<OnSwap>) {
+	/**
+	 * Connects a function to a signal that's fired when the swap key is pressed
+	 * @param callback The function to call when the signal is fired
+	 * @returns A signal connection
+	 */
+	public onSwap(callback: VoidCallback<OnSwap>) {
 		return this.on_swap.connect(callback)
 	}
 
-	onReset(callback: VoidCallback<OnReset>) {
+	/**
+	 * Connects a function to a signal that's fired when the reset key is pressed
+	 * @param callback The function to call when the signal is fired
+	 * @returns A signal connection
+	 */
+	public onReset(callback: VoidCallback<OnReset>) {
 		return this.on_reset.connect(callback)
 	}
 
-	onKeyPress(input: InputObject) {
+	private onKeyPress(input: InputObject) {
 		// check if swap key was pressed
 		const swap_pressed = anyKeyPressed(getKeys("swap"))
 		if (swap_pressed) {
@@ -48,7 +63,10 @@ export class PlayerInput {
 		}
 	}
 
-	update(dt: number) {
+	/**
+	 * Checks movement keys to see if any are being held
+	 */
+	public update(dt: number) {
 		// check if movement key is pressed
 		for (const action of move_actions) {
 			const pressed = anyKeyPressed(getKeys(action))
