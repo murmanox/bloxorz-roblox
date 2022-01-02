@@ -136,6 +136,19 @@ export class BlockController {
 		// }
 	}
 
+	public split(block: Block, positions: BoardPosition[]) {
+		return block
+			.blinkOut()
+			.then(() => {
+				const new_blocks = block.split(positions)
+				this.blocks.remove(this.blocks.findIndex((find_block) => find_block === block))
+				this.blocks = [...this.blocks, ...new_blocks]
+				this.current_block = new_blocks[0]
+				return Promise.all(new_blocks.map((block) => block.blinkIn()))
+			})
+			.then(() => block.destroy())
+	}
+
 	public spawn() {
 		return Promise.all(this.blocks.map((block) => block.spawn(this.app.board.position)))
 	}

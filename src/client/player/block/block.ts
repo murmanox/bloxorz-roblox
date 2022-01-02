@@ -68,9 +68,9 @@ export class Block implements IBlock {
 			})
 	}
 
-	public blinkIn(offset: Vector3) {
+	public blinkIn() {
 		this.is_animating = true
-		this.instance.Position = this.instance.Position.add(offset)
+		this.instance.Position = this.instance.Position.add(GAME_CONFIG.board.position)
 		return Effects.blinkIn(this.instance, Workspace).finally(() => {
 			this.is_animating = false
 		})
@@ -161,7 +161,7 @@ export class Block implements IBlock {
 	}
 
 	public split(positions: BoardPosition[]): Block[] {
-		if (this.length !== this.length) {
+		if (positions.size() !== this.length) {
 			error(
 				`Mismatch between teleport destinations and block length. Expected ${this.length} positions, got ${this.length}`
 			)

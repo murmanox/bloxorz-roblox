@@ -105,27 +105,27 @@ export class Tile implements ITile {
 		}
 	}
 
-	public stepped(block: Block): Promise<unknown> {
+	public stepped(block: Block): Promise<boolean> {
 		// Check if tile should run effects
 		if (this.is_heavy && !block.isStanding()) {
-			return Promise.resolve(undefined)
+			return Promise.resolve(false)
 		}
 
 		// activate target tiles
-		const promises: Promise<void>[] = []
+		const promises: Promise<boolean>[] = []
 		if (this.activate_targets.size() > 0) {
 			const targets = this.activate_targets.map((v) => this.board.getTile(v.column, v.row))
 			targets.forEach((t) => t.activate(this.action))
-			print("activate")
+			promises.push(Promise.resolve(true))
 		}
 
 		// teleport block
 		if (this.teleport_targets.size() > 0) {
-			const targets = this.teleport_targets.map((v) => this.board.getTile(v.column, v.row))
-			print("teleport")
+			const p = this.board.block_controller.split(block, this.teleport_targets).then(() => true)
+			promises.push(p)
 		}
 
-		return Promise.all(promises)
+		return Promise.all(promises).then(() => promises.size() > 0)
 	}
 
 	public toggle(value: boolean) {
@@ -153,7 +153,7 @@ export class Tile implements ITile {
 
 export const empty_tile: ITile = {
 	activate: (action: "toggle" | "activate" | "deactivate" | undefined): void => {},
-	stepped: (block: Block): Promise<unknown> => Promise.resolve(undefined),
+	stepped: (block: Block): Promise<boolean> => Promise.resolve(false),
 	toggle: (value: boolean): void => {},
 	isLosingPosition: (block: Block): boolean => true,
 	isWinningPosition: (block: Block): boolean => false,
