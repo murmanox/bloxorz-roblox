@@ -1,4 +1,5 @@
 import Signal from "@rbxts/good-signal"
+import { Block } from "client/player/block/block"
 import { LevelConfig } from "shared/config/levels/level-types"
 import { LevelData } from "types/interfaces/level-types"
 import { ITile } from "types/interfaces/tile-types"
@@ -25,6 +26,7 @@ export class Board {
 	static EMPTY = BoardEnums.EMPTY
 
 	private state: BoardState = BoardState.Unloaded
+	public previous_checks = new Map<Block, Vector3[]>()
 
 	// class
 	private board_logic = new BoardLogic()
@@ -63,17 +65,17 @@ export class Board {
 	}
 
 	// check all game logic to see if the player has won or lost
-	public check() {
+	public check(current_checks = new Map<Block, Vector3[]>()) {
+		// Check if player has lost
 		const lose = this.board_logic.checkLoss(this.block_controller.blocks, this.tiles)
 		if (lose) {
-			//do lose stuff
 			print("lose")
 			return
 		}
 
+		// Check if player has won
 		const win = this.board_logic.checkWin(this.block_controller.blocks, this.tiles)
 		if (win) {
-			// do win stuff
 			print("win")
 			return
 		}
@@ -82,15 +84,41 @@ export class Board {
 		this.block_controller.checkCombine()
 
 		// run effects
-		const promises: Promise<unknown>[] = []
+		const promises: Promise<boolean>[] = []
 		this.block_controller.blocks.forEach((block) => {
+			const m = this.previous_checks.get(block)
+			const n = current_checks.get(block)
 			const tiles = block.getPositions().map((p) => this.getTile(p.X, p.Z))
-			tiles.forEach((t) => promises.push(t.stepped(block)))
+
+			// Make sure blocks that were processed on previous checks don't get checked again.
+			// This prevents buttons from being activated repeatedly when a different block moves.
+			if (
+				(m && m.every((pos) => block.getPositions().includes(pos))) ||
+				(n && n.every((pos) => block.getPositions().includes(pos)))
+			) {
+				current_checks.set(block, block.getPositions())
+				return
+			}
+
+			current_checks.set(block, block.getPositions())
+			tiles.forEach((tile) => {
+				return promises.push(tile.stepped(block))
+			})
 		})
 
-		Promise.all(promises).then(() => print("stepped done"))
-
-		// if effects ran check again
+		// Wait for all animations to finish
+		Promise.all(promises)
+			// Return a boolean that's true if the board needs to be checked again
+			.then((res) => (res as boolean[]).some((v) => v))
+			.then((check_again) => {
+				// Check again if stepping on a tile has changed the board in some way. Such as toggling a tile or teleporting a block.
+				if (check_again) {
+					task.wait()
+					this.check(current_checks)
+				} else {
+					this.previous_checks = current_checks
+				}
+			})
 	}
 
 	public checkCombine() {}
