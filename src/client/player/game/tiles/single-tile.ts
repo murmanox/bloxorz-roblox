@@ -1,69 +1,136 @@
-import { ReplicatedStorage } from "@rbxts/services"
+import Llama from "@rbxts/llama"
+import { ReplicatedStorage, Workspace } from "@rbxts/services"
 import { Block } from "client/player/block/block"
-import { ITile, TileProperties } from "types/interfaces/tile-types"
+import { ITile, TileAction, TileProperties, TileTarget } from "types/interfaces/tile-types"
 import { Board } from "../board/board"
 
 const PREFABS = ReplicatedStorage.assets.tiles
 
-export class Tile implements ITile {
-	private model: Model
-	public instance: Model
-	// private model: PVInstance
-	// public instance: PVInstance
-
-	private is_end = false
-	private is_fragile = false
-	private is_enabled = true
-	private is_toggle = false
-
-	private board: Board
-	constructor(board: Board, properties: TileProperties) {
-		this.board = board
-
-		// tile is a button
-		if (properties.kind === "button") {
-			if (properties.teleport) {
-				this.model = PREFABS.teleporter
-			} else if (properties.heavy) {
-				this.model = PREFABS.x_button
-			} else {
-				this.model = PREFABS.o_button
-			}
+function getTileModel(properties: DefaultProps): Model {
+	// tile is a button
+	if (properties.kind === "button") {
+		if (properties.teleport.size() > 0) {
+			return PREFABS.teleporter
+		} else if (properties.heavy) {
+			return PREFABS.x_button
+		} else {
+			return PREFABS.o_button
 		}
-
-		// tile is an end tile
-		else if (properties.kind === "end") {
-			this.is_end = true
-			this.model = PREFABS.endtile
-		}
-
-		// tile is a tile
-		else {
-			if (properties.fragile) {
-				this.model = PREFABS.wooden
-			} else if (properties.toggle) {
-				this.model = PREFABS.toggle
-				this.is_toggle = true
-			} else {
-				this.model = PREFABS.tile
-			}
-		}
-
-		if (properties.kind === "tile") {
-			if (properties.toggle) {
-				this.is_enabled = properties.toggle.initial
-			}
-		}
-
-		this.instance = this.model.Clone()
-
-		// do initial toggle stuff
 	}
 
-	public activate(action: "toggle" | "activate" | "deactivate" = "toggle") {}
-	public stepped(block: Block) {}
+	// tile is an end tile
+	else if (properties.kind === "end") {
+		return PREFABS.endtile
+	}
+
+	// tile is a tile
+	else {
+		if (properties.fragile) {
+			return PREFABS.wooden
+		} else if (properties.toggle) {
+			return PREFABS.toggle
+		} else {
+			return PREFABS.tile
+		}
+	}
+}
+
+interface DefaultProps {
+	kind: "button" | "tile" | "end"
+	activate: TileTarget[]
+	teleport: TileTarget[]
+	heavy: boolean
+	action: TileAction
+	fragile: boolean
+	toggle: boolean
+	initial: boolean
+}
+
+function mergeDefaultProps(properties: TileProperties) {
+	const props = {
+		...properties,
+		toggle: "toggle" in properties,
+		initial: "toggle" in properties ? properties.toggle!.initial : true,
+	}
+
+	return Llama.Dictionary.mergeDeep(defaults, props) as DefaultProps
+}
+
+const defaults: DefaultProps = {
+	kind: "tile",
+	fragile: false,
+	activate: [],
+	teleport: [],
+	heavy: false,
+	toggle: false,
+	initial: true,
+	action: "toggle",
+}
+
+export class Tile implements ITile {
+	public instance: Model
+
+	private is_end: boolean
+
+	private action: TileAction
+	private activate_targets: TileTarget[]
+	private teleport_targets: TileTarget[]
+
+	private is_heavy: boolean
+	private is_fragile: boolean
+	private is_enabled: boolean
+	private can_toggle: boolean
+
+	private board: Board
+	constructor(board: Board, properties: TileProperties, dbg = false) {
+		this.board = board
+
+		const props = mergeDefaultProps(properties)
+		this.instance = getTileModel(props).Clone()
+
+		this.is_end = props.kind === "end"
+		this.can_toggle = props.toggle
+		this.is_enabled = props.initial
+		this.is_fragile = props.fragile
+		this.is_heavy = props.heavy
+
+		this.action = props.action
+		this.activate_targets = props.activate
+		this.teleport_targets = props.teleport
+	}
+
+	public activate(action: "toggle" | "activate" | "deactivate" = "toggle") {
+		if (this.can_toggle && action === "toggle") {
+			this.toggle(!this.is_enabled)
+		}
+	}
+
+	public stepped(block: Block): Promise<unknown> {
+		// Check if tile should run effects
+		if (this.is_heavy && !block.isStanding()) {
+			return Promise.resolve(undefined)
+		}
+
+		// activate target tiles
+		const promises: Promise<void>[] = []
+		if (this.activate_targets.size() > 0) {
+			const targets = this.activate_targets.map((v) => this.board.getTile(v.column, v.row))
+			targets.forEach((t) => t.activate(this.action))
+			print("activate")
+		}
+
+		// teleport block
+		if (this.teleport_targets.size() > 0) {
+			const targets = this.teleport_targets.map((v) => this.board.getTile(v.column, v.row))
+			print("teleport")
+		}
+
+		return Promise.all(promises)
+	}
+
 	public toggle(value: boolean) {
 		this.is_enabled = value
+		this.instance.Parent = value ? Workspace : undefined
 	}
 
 	public isLosingPosition(block: Block) {
@@ -86,7 +153,7 @@ export class Tile implements ITile {
 
 export const empty_tile: ITile = {
 	activate: (action: "toggle" | "activate" | "deactivate" | undefined): void => {},
-	stepped: (block: Block): void => {},
+	stepped: (block: Block): Promise<unknown> => Promise.resolve(undefined),
 	toggle: (value: boolean): void => {},
 	isLosingPosition: (block: Block): boolean => true,
 	isWinningPosition: (block: Block): boolean => false,
