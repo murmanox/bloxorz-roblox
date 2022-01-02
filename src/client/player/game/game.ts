@@ -1,5 +1,5 @@
 import { ContextActionService, RunService, UserInputService } from "@rbxts/services"
-import game_config from "shared/config/game-config"
+import game_config from "shared/config/board-config"
 import levels from "shared/config/levels"
 import { Board, BoardState } from "./board/board"
 import { PlayerInput } from "./player-input"
@@ -27,7 +27,7 @@ export class Game {
 	public player_has_won = false
 
 	constructor() {
-		this.board = new Board(this, config.board_position)
+		this.board = new Board(this, config.position)
 
 		this.board.onStateChange((state) => {
 			if (state === BoardState.Loaded) {
