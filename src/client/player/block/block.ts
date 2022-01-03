@@ -1,6 +1,5 @@
-import inspect from "@rbxts/inspect"
 import { Janitor } from "@rbxts/janitor"
-import { Debris, RunService, Workspace } from "@rbxts/services"
+import { Debris, Workspace } from "@rbxts/services"
 import Effects from "client/player/game/effects/effects"
 import { GAME_CONFIG } from "shared/config"
 import { Math, roundTo } from "shared/utility/math"
@@ -18,11 +17,23 @@ const rotation_point_offset = new Vector3(0.5, 0, 0.5)
 const x_rotation = Math.HALF_PI
 const z_rotation = -Math.HALF_PI
 
+let block_count = 0
+
 const config = GAME_CONFIG.block
+const DEBUG = config.debug
+
+const dbg = (...args: unknown[]) => {
+	if (DEBUG) {
+		print(...args)
+	}
+}
+
 export class Block implements IBlock {
 	public positions: Vector3[]
 	public rotation: Vector3
 	public length: number
+
+	public id = `BLOCK_${block_count++}`
 
 	// state variables
 	private is_rotating = false
@@ -37,7 +48,7 @@ export class Block implements IBlock {
 	constructor(positions: Vector3[]) {
 		if (positions.size() === 0) error("Empty array cannot be passed to Block constructor")
 
-		// check that all positions are of uniform distance apart
+		dbg(`Creating ${this.id}`)
 
 		// check direction parts are moving to get starter rotation
 		this.positions = positions
@@ -45,6 +56,11 @@ export class Block implements IBlock {
 		this.length = positions.size()
 
 		this.instance = makeBlock(this.positions, this.rotation.mul(this.length))
+	}
+
+	public show() {
+		this.instance.Parent = config.parent
+		return this
 	}
 
 	// make the block fall from the sky into position
@@ -189,6 +205,7 @@ export class Block implements IBlock {
 	}
 
 	public destroy(fall_time: number = 2) {
+		dbg(`Destroying ${this.id}`)
 		this.janitor.Cleanup()
 		this.instance.Destroy()
 	}
