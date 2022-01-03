@@ -1,8 +1,8 @@
 import Signal from "@rbxts/good-signal"
 import { BlockController } from "client/player/block/block-controller"
 import { BlockFactory } from "client/player/block/block-factory"
-import { LevelData } from "types/interfaces/level-types"
-import { Board, BoardState } from "./board"
+import { LevelConfig } from "shared/config/levels/level-types"
+import { Board } from "./board"
 import { BoardSwapper } from "./board-swapper"
 import { TileManager } from "./tile-manager"
 
@@ -12,7 +12,7 @@ export class BoardLoader {
 	private block_controller: BlockController
 	private swapper: BoardSwapper
 
-	public level_data?: LevelData
+	public level_data?: LevelConfig
 	public size = new Vector2()
 
 	private on_load = new Signal()
@@ -27,7 +27,7 @@ export class BoardLoader {
 		this.block_controller = board.block_controller
 	}
 
-	public setLevel(level?: LevelData) {
+	public setLevel(level?: LevelConfig) {
 		this.swapper.setTarget(level).updateBoard()
 	}
 
@@ -35,7 +35,7 @@ export class BoardLoader {
 		this.swapper.resetBoard()
 	}
 
-	public load(level: LevelData): Promise<void> {
+	public load(level: LevelConfig): Promise<void> {
 		this.level_data = level
 		this.size = new Vector2(level.level_tiles[0].size(), level.level_tiles.size())
 		this.tiles.setLevelTiles(level.tiles)

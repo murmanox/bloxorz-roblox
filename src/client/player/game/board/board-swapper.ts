@@ -1,3 +1,4 @@
+import { LevelConfig } from "shared/config/levels/level-types"
 import { LevelData } from "types/interfaces/level-types"
 import { Board } from "./board"
 import { BoardLoader } from "./board-loader"
@@ -7,12 +8,12 @@ import { BoardLoader } from "./board-loader"
  */
 export class BoardSwapper {
 	private is_swapping = false
-	private target_level?: LevelData
+	private target_level?: LevelConfig
 	private will_reset = false
 
 	constructor(private loader: BoardLoader, private board: Board) {}
 
-	public setTarget(level?: LevelData) {
+	public setTarget(level?: LevelConfig) {
 		this.target_level = level
 		return this
 	}

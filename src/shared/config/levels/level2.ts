@@ -1,5 +1,6 @@
 import { v3 } from "shared/utility/vector3-utils"
 import { TileProperties } from "types/interfaces/tile-types"
+import { LevelConfig } from "./level-types"
 
 export default {
 	name: "LEVEL 2",
@@ -50,4 +51,4 @@ export default {
 			},
 		],
 	]),
-}
+} as LevelConfig

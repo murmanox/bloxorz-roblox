@@ -1,9 +1,8 @@
-import { loli } from "@rbxts/loli-tween-animator"
 import { Workspace } from "@rbxts/services"
 import { verticalInAnimation, verticalOutAnimation } from "client/player/game/effects/tile-animations"
-import { tile_config } from "shared/game/tiles/tile-config"
-import { inRange, Math } from "shared/utility/math"
-import { LevelData, TileMap } from "types/interfaces/level-types"
+import { LevelConfig } from "shared/config/levels/level-types"
+import { inRange } from "shared/utility/math"
+import { TileMap } from "types/interfaces/level-types"
 import { ITile, TileProperties } from "types/interfaces/tile-types"
 import { empty_tile, Tile } from "../tiles/single-tile"
 import { Board } from "./board"
@@ -46,7 +45,7 @@ export class TileManager {
 	/**
 	 * Generate tile instances from the level data and add them to the tile container
 	 */
-	public generate(level_data: LevelData) {
+	public generate(level_data: LevelConfig) {
 		const tiles: Array<ITile> = []
 
 		for (const str of level_data.level_tiles) {
