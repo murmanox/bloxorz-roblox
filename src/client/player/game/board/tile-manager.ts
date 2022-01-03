@@ -4,7 +4,7 @@ import { LevelConfig } from "shared/config/levels/level-types"
 import { inRange } from "shared/utility/math"
 import { TileMap } from "types/interfaces/level-types"
 import { ITile, TileProperties } from "types/interfaces/tile-types"
-import { empty_tile, Tile } from "../tiles/single-tile"
+import { empty_tile, Tile } from "../tiles/tile"
 import { Board } from "./board"
 
 const wooden: TileProperties = { kind: "tile", fragile: true }
