@@ -1,3 +1,5 @@
+import { List } from "@rbxts/llama"
+
 /**
  * Iterates through a 2d array and appends a padding value to the end of each
  * array until they're all of uniform length.
@@ -18,4 +20,9 @@ export function pad2dArray<T>(array: T[][], pad_value: T): T[][] {
 	})
 
 	return array
+}
+
+type Flattened<T> = T extends Array<infer U> ? Flattened<U> : T
+export function flatten<T>(input: T[]): Flattened<T>[] {
+	return List.flatten(input) as unknown as Flattened<T>[]
 }
