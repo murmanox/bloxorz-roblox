@@ -1,5 +1,6 @@
 import Signal from "@rbxts/good-signal"
 import { Janitor } from "@rbxts/janitor"
+import { flatten } from "shared/utility/array"
 import { v3 } from "shared/utility/vector3-utils"
 import { DisplayArrow } from "../game/display-arrow"
 import type { Game } from "../game/game"
@@ -76,66 +77,6 @@ export class BlockController {
 		this.current_block = this.blocks[index]
 	}
 
-	// check all blocks to see if they can be combined
-	public checkCombine() {
-		// this would probably be cool if I could check up, down, left and right on the board
-
-		if (!this.current_block) return
-		const current_block = this.current_block
-
-		// standing blocks can't be combined
-		if (current_block.isStanding()) return
-
-		for (const other_block of this.blocks) {
-			// don't compare a block against itself
-			if (other_block === current_block) continue
-			if (other_block.isStanding()) continue
-
-			const block = current_block // fix later
-			const positions = [...block.positions, ...other_block.positions]
-
-			// TODO: prevent overlapping (not an issue unless >2 blocks)
-
-			for (const position of current_block.positions) {
-				for (const other_position of other_block.getPositions()) {
-					// check if block is next to another block
-					if (position.sub(other_position).Magnitude !== 1) continue
-
-					// check that other block is along same axis
-					const all_x_equal = positions.map((v) => v.X).every((x, _, arr) => x === arr[0])
-					const all_z_equal = positions.map((v) => v.Z).every((z, _, arr) => z === arr[0])
-
-					// position doesn't follow direction of current block
-					if (!all_x_equal && !all_z_equal) {
-						continue
-					}
-
-					// combine blocks
-					const new_block = current_block.combine(other_block)
-
-					// remove current and other block from the blocks array and replace with the combined block
-					this.blocks.remove(this.blocks.findIndex((find_block) => find_block === current_block))
-					this.blocks.remove(this.blocks.findIndex((find_block) => find_block === other_block))
-
-					current_block.destroy(0)
-					other_block.destroy(0)
-
-					this.blocks.push(new_block)
-					this.current_block = new_block
-
-					// new block may be able to combine into another block
-					return
-				}
-			}
-		}
-
-		// if (this.blocks.size() > 1) {
-		// 	this.arrow.show()
-		// } else {
-		// 	this.arrow.hide()
-		// }
-	}
-
 	public split(block: Block, positions: BoardPosition[]) {
 		return block
 			.blinkOut()
@@ -147,6 +88,29 @@ export class BlockController {
 				return Promise.all(new_blocks.map((block) => block.blinkIn()))
 			})
 			.then(() => block.destroy())
+	}
+
+	/**
+	 * Combine multiple blocks together into a single block
+	 * @param blocks The blocks to combine
+	 */
+	public combine(blocks: Block[]) {
+		// Create a new block from the passed blocks
+		const new_block = new Block(flatten(blocks.map((b) => b.positions))).show()
+
+		// Add the new block to the BlockController
+		this.blocks.push(new_block)
+
+		// Replace the current block if it's being merged into a new block
+		if (blocks.includes(this.current_block!)) {
+			this.current_block = new_block
+		}
+
+		// Remove merged blocks from BlockController and destroy
+		for (const block of blocks) {
+			this.blocks.remove(this.blocks.indexOf(block))
+			block.destroy()
+		}
 	}
 
 	public spawn() {
