@@ -1,6 +1,8 @@
 import { IBlock } from "./block-types"
 
-interface Target {
+export type TileAction = "toggle" | "activate" | "deactivate"
+
+export interface TileTarget {
 	column: number
 	row: number
 }
@@ -11,10 +13,10 @@ interface CanToggle {
 
 interface ButtonProps extends CanToggle {
 	kind: "button"
-	activate?: Target[]
-	teleport?: Target[]
+	activate?: TileTarget[]
+	teleport?: TileTarget[]
 	heavy?: boolean
-	action?: "toggle" | "activate" | "deactivate"
+	action?: TileAction
 }
 
 interface TileProps extends CanToggle {
@@ -29,11 +31,10 @@ interface EndProps {
 export type TileProperties = TileProps | ButtonProps | EndProps
 
 export interface ITile {
-	// instance?: PVInstance
 	instance?: Model
 
 	activate(action: ButtonProps["action"]): void
-	stepped(block: IBlock): void
+	stepped(block: IBlock): Promise<boolean>
 	toggle(value: boolean): void
 	isLosingPosition(block: IBlock): boolean
 	isWinningPosition(block: IBlock): boolean
