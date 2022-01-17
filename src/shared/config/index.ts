@@ -8,4 +8,5 @@ export const GAME_CONFIG = {
 	block,
 	tile,
 	credits,
+	debug: true,
 }

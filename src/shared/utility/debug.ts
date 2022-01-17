@@ -1,5 +1,6 @@
 import Make from "@rbxts/make"
 import { Workspace } from "@rbxts/services"
+import { GAME_CONFIG } from "shared/config"
 
 export function makeDebugPart(
 	position: Vector3,
@@ -13,4 +14,10 @@ export function makeDebugPart(
 		Size: size,
 		Color: new Color3(math.random(), math.random(), math.random()),
 	})
+}
+
+export function dbg(...args: unknown[]) {
+	if (GAME_CONFIG.debug) {
+		print(...args)
+	}
 }
