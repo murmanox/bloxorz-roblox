@@ -2,15 +2,11 @@ import Signal from "@rbxts/good-signal"
 import { Janitor } from "@rbxts/janitor"
 import { flatten } from "shared/utility/array"
 import { v3 } from "shared/utility/vector3-utils"
+import { MoveDirection } from "types/interfaces/block-types"
 import { DisplayArrow } from "../game/display-arrow"
 import type { Game } from "../game/game"
 import { PlayerInput } from "../game/player-input"
 import { Block } from "./block"
-
-const left_vector = v3.left
-const right_vector = v3.right
-const forward_vector = v3.back
-const back_vector = v3.forward
 
 const BLOCK_SIZE = 1
 const arrow_offset = 0.15
@@ -24,10 +20,10 @@ const arrow_position_callback = (block: Block): Vector3 => {
 }
 
 const action_direction_map = {
-	up: forward_vector,
-	down: back_vector,
-	left: left_vector,
-	right: right_vector,
+	up: v3.back,
+	down: v3.forward,
+	left: v3.left,
+	right: v3.right,
 }
 
 export class BlockController {
@@ -49,7 +45,6 @@ export class BlockController {
 		this.janitor.Add(this.arrow, "destroy")
 
 		// Connect to input signals
-		this.janitor.Add(this.player_input.onMove((dir) => this.onMove(dir)))
 		this.janitor.Add(this.player_input.onReset(() => this.app.board.resetBoard()))
 		this.janitor.Add(this.player_input.onSwap(() => this.nextBlock()))
 	}
@@ -59,17 +54,6 @@ export class BlockController {
 		this.current_block = blocks.size() > 0 ? blocks[0] : undefined
 	}
 
-	private onMove(action_name: keyof typeof action_direction_map) {
-		if (!this.current_block || this.is_moving) return
-		this.is_moving = true
-
-		const direction = action_direction_map[action_name as keyof typeof action_direction_map]
-		this.current_block.move(direction).finally(() => {
-			this.is_moving = false
-			this.move_finished.fire()
-		})
-	}
-
 	public nextBlock() {
 		if (this.blocks.size() <= 1) return
 		const block_index = this.blocks.findIndex((block) => block === this.current_block)
@@ -77,6 +61,12 @@ export class BlockController {
 		this.current_block = this.blocks[index]
 	}
 
+	/**
+	 * Split a single block into multiple smaller blocks
+	 * @param block
+	 * @param positions
+	 * @returns A promise that's resolved when the new block has been created
+	 */
 	public split(block: Block, positions: BoardPosition[]) {
 		return block
 			.blinkOut()
@@ -118,7 +108,25 @@ export class BlockController {
 	}
 
 	public despawn() {
-		print("despawn")
-		this.blocks.forEach((block) => block.destroy())
+		this.blocks.forEach((block) => block.fall())
+	}
+
+	/**
+	 *
+	 * @param direction
+	 * @returns
+	 */
+	public move(direction: MoveDirection): Promise<any> {
+		// Reject here to prevent the board being checked unnecessarily
+		if (!this.canMove()) return Promise.reject("A Block inside this BlockController is currently moving")
+		this.is_moving = true
+
+		return this.current_block!.move(action_direction_map[direction]).finally(() => {
+			this.is_moving = false
+		})
+	}
+
+	public canMove() {
+		return this.current_block && !this.is_moving
 	}
 }

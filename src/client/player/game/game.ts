@@ -2,6 +2,7 @@ import { ContextActionService, RunService, UserInputService } from "@rbxts/servi
 import game_config from "shared/config/board-config"
 import levels from "shared/config/levels"
 import { Board, BoardState } from "./board/board"
+import { GameLogic } from "./game-logic"
 import { PlayerInput } from "./player-input"
 
 export enum GameState {
@@ -16,6 +17,7 @@ export enum GameState {
 const config = game_config
 export class Game {
 	public player_input = new PlayerInput()
+	private logic = new GameLogic(this)
 
 	public board: Board
 	private current_level = 0 // get this from profileservice
@@ -24,10 +26,14 @@ export class Game {
 	/** Unused, maybe remove? */
 	public state = GameState.Unloaded
 	public is_loaded = false
-	public player_has_won = false
+	public win = false
+	public lose = false
 
 	constructor() {
 		this.board = new Board(this, config.position)
+
+		this.player_input.onMove((dir) => this.logic.onMove(dir))
+		this.player_input.onReset(() => this.logic.onReset())
 
 		this.board.onStateChange((state) => {
 			if (state === BoardState.Loaded) {
@@ -71,7 +77,7 @@ export class Game {
 	}
 
 	private update(dt: number) {
-		if (this.player_has_won) {
+		if (this.win) {
 			// handle winning
 			return
 		}
@@ -82,7 +88,3 @@ export class Game {
 		}
 	}
 }
-
-/**
- * on update => check input, move player, (check board, run effects, repeat)
- */

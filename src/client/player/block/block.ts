@@ -1,31 +1,26 @@
 import { Janitor } from "@rbxts/janitor"
+import { LoliTween } from "@rbxts/loli-tween-animator/out/loli"
 import { Debris, Workspace } from "@rbxts/services"
-import Effects from "client/player/game/effects/effects"
 import { GAME_CONFIG } from "shared/config"
-import { Math, roundTo } from "shared/utility/math"
+import { dbg } from "shared/utility/debug"
 import { TweenPromise } from "shared/utility/tween"
 import { v3, Vector3Math } from "shared/utility/vector3-utils"
 import { IBlock } from "types/interfaces/block-types"
+import { Effects } from "../game/effects/effects"
 import { Rotation } from "./block-types"
 import { getBlockPosition, getBlockSize, makeBlock } from "./block-utils"
 import { RotateLogic } from "./rotate-logic"
 
 export const DEFAULT_BLOCK_LENGTH = 2
 
-const position_offset = new Vector3(0.5, 0.5, 0.5)
-const rotation_point_offset = new Vector3(0.5, 0, 0.5)
-const x_rotation = Math.HALF_PI
-const z_rotation = -Math.HALF_PI
-
 let block_count = 0
 
 const config = GAME_CONFIG.block
-const DEBUG = config.debug
 
-const dbg = (...args: unknown[]) => {
-	if (DEBUG) {
-		print(...args)
-	}
+interface BlockJanitor {
+	rotation: RBXScriptConnection
+	instance: BasePart
+	rotation_tween: LoliTween
 }
 
 export class Block implements IBlock {
@@ -38,9 +33,10 @@ export class Block implements IBlock {
 	// state variables
 	private is_rotating = false
 	private is_animating = false
+	private is_falling = false
 
-	private janitor = new Janitor<{ rotation: RBXScriptConnection; instance: BasePart }>()
-	private instance: BasePart
+	private janitor = new Janitor<BlockJanitor>()
+	public instance: BasePart
 
 	// classes
 	private rotate_logic = new RotateLogic() // cool SRP technique I saw on youtube
@@ -55,7 +51,7 @@ export class Block implements IBlock {
 		this.rotation = this.rotate_logic.initialRotation(positions)
 		this.length = positions.size()
 
-		this.instance = makeBlock(this.positions, this.rotation.mul(this.length))
+		this.instance = makeBlock(this.positions, this.rotation, this.length)
 	}
 
 	public show() {
@@ -71,6 +67,7 @@ export class Block implements IBlock {
 		this.instance.Position = position.add(config.spawn_height)
 		this.instance.Parent = Workspace
 
+		this.is_animating = true
 		const tween = new TweenPromise(this.instance, tween_info, { Position: position })
 		return tween
 			.play()
@@ -80,7 +77,8 @@ export class Block implements IBlock {
 				}
 			})
 			.finally(() => {
-				this.is_animating = true
+				print("animation done")
+				this.is_animating = false
 			})
 	}
 
@@ -103,34 +101,15 @@ export class Block implements IBlock {
 	 * @param direction The direction to move the block
 	 */
 	public move(direction: Vector3): Promise<void> {
-		if (this.is_rotating) return Promise.reject("Block is already rotating") as Promise<void>
+		if (this.is_rotating) Promise.resolve()
 		if (direction.Magnitude !== 1) return error(`Invalid unit vector: ${direction}`)
 
-		const block_offset = getBlockSize(this.rotation, this.length).mul(direction).div(2)
-		const rotation_point = this.getPosition().add(block_offset)
-
-		// rotate all vectors around rotation_point with given direction on each axis
-		this.positions = this.positions.map((position) => {
-			const v = Vector3Math.rotateXYZ(
-				position.add(position_offset),
-				x_rotation * direction.Z,
-				0,
-				z_rotation * direction.X,
-				rotation_point.add(rotation_point_offset)
-			)
-
-			return new Vector3(roundTo(v.X, 5), roundTo(v.Y, 5), roundTo(v.Z, 5)).sub(position_offset)
-		})
-
 		this.is_rotating = true
-		return Effects.rotateAround(
-			this.instance,
-			rotation_point,
-			direction,
-			Math.HALF_PI,
-			config.rotation_speed
-		).then(() => {
-			this.rotation = this.rotate_logic.rotate(this.rotation, direction)
+		const tween = this.rotate_logic.rotateBlock(this, direction)
+		this.janitor.Add(tween, "destroy", "rotation_tween")
+
+		return tween.then(() => {
+			// Set rotating to false to signify the end of the animation
 			this.is_rotating = false
 		})
 	}
@@ -188,11 +167,20 @@ export class Block implements IBlock {
 		})
 	}
 
-	// make the player fall with a given velocity, such as when completing a level or falling off the map
+	/**
+	 * Make the player fall with a given velocity, such as when completing a level or falling off the map
+	 */
 	public fall(direction: Vector3 = v3.zero, fall_time = 2) {
+		// Make sure block is being rendered
 		if (!this.instance.IsDescendantOf(Workspace)) return
 
-		print("creating falling part")
+		// Make sure block isn't already falling
+		if (this.is_falling) return
+		this.is_falling = true
+		dbg("Creating falling part")
+
+		this.janitor.Remove("rotation_tween")
+
 		this.instance.Anchored = false
 		Debris.AddItem(this.instance, fall_time)
 

@@ -26,6 +26,8 @@ export class Board {
 	static EMPTY = BoardEnums.EMPTY
 
 	private state: BoardState = BoardState.Unloaded
+	public win = false
+	public lose = false
 
 	// class
 	private board_logic = new BoardLogic()
@@ -42,14 +44,23 @@ export class Board {
 
 		this.block_controller.move_finished.connect(() => this.check())
 
-		const setState = (state: BoardState) => () => this.setState(state)
+		const setState = (state: BoardState) => () => {
+			this.win = this.lose = false
+			this.setState(state)
+		}
+
 		this.loader.onLoad(setState(BoardState.Loading))
 		this.loader.onLoaded(setState(BoardState.Loaded))
 		this.loader.onUnload(setState(BoardState.Unloading))
 		this.loader.onUnloaded(setState(BoardState.Unloaded))
 
-		this.board_logic.onLose(() => print("lose"))
-		this.board_logic.onWin(() => print("win"))
+		this.board_logic.onLose(() => {
+			this.lose = true
+		})
+
+		this.board_logic.onWin(() => {
+			this.win = true
+		})
 	}
 
 	private setState(state: BoardState) {
@@ -66,7 +77,7 @@ export class Board {
 
 	// check all game logic to see if the player has won or lost
 	public check() {
-		this.board_logic.check(this, this.block_controller, this.tiles)
+		return this.board_logic.check(this, this.block_controller, this.tiles)
 	}
 
 	public resetBoard() {

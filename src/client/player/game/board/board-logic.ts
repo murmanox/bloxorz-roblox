@@ -1,10 +1,8 @@
 import Signal from "@rbxts/good-signal"
-import inspect from "@rbxts/inspect"
 import { Block } from "client/player/block/block"
 import { BlockController } from "client/player/block/block-controller"
 import { flatten } from "shared/utility/array"
 import { v3 } from "shared/utility/vector3-utils"
-import { PollingWatchKind } from "typescript"
 import { Board } from "./board"
 import { TileManager } from "./tile-manager"
 
@@ -98,54 +96,57 @@ export class BoardLogic {
 	}
 
 	public check(board: Board, block_controller: BlockController, tiles: TileManager) {
-		// Check if player has lost
-		if (this.checkLoss(block_controller.blocks, tiles)) {
-			this.on_lose.fire()
-			return
-		}
-
-		// Check if player has won
-		if (this.checkWin(block_controller.blocks, tiles)) {
-			this.on_win.fire()
-			return
-		}
-
-		// check combine
-		this.checkCombine(block_controller.blocks).forEach((r) => block_controller.combine(r))
-
-		// run effects
-		// Maybe this should be in a separate class / method?
-		const promises: Promise<boolean>[] = []
-		block_controller.blocks.forEach((block) => {
-			const m = this.previous_checks.get(block)
-			const n = this.current_checks.get(block)
-			const block_positions = block.getPositions()
-			const tiles = block_positions.map((p) => board.getTile(p.X, p.Z))
-
-			// Make sure blocks that were processed on previous checks don't get checked again.
-			// This prevents buttons from being activated repeatedly when a different block moves.
-			if (
-				(m && m.every((pos) => block_positions.includes(pos))) ||
-				(n && n.every((pos) => block_positions.includes(pos)))
-			) {
-				// print(`block was checked previously (${block.getPositions().join("), (")})`)
-				this.current_checks.set(block, block.getPositions())
-				return
+		const checkBoard = () => {
+			// Check if player has lost
+			if (this.checkLoss(block_controller.blocks, tiles)) {
+				this.on_lose.fire()
+				return Promise.resolve()
 			}
 
-			// Block hasn't been checked before
-			this.current_checks.set(block, block_positions)
-			tiles.forEach((tile) => promises.push(tile.stepped(block)))
-		})
-
-		// Wait for all animations to finish
-		Promise.fold(promises, (a, v) => a || v, false).then((res) => {
-			if (res) {
-				task.wait()
-				this.check(board, block_controller, tiles)
-			} else {
-				this.previous_checks = this.current_checks
+			// Check if player has won
+			if (this.checkWin(block_controller.blocks, tiles)) {
+				this.on_win.fire()
+				return Promise.resolve()
 			}
+
+			// check combine
+			this.checkCombine(block_controller.blocks).forEach((r) => block_controller.combine(r))
+
+			// run effects
+			// Maybe this should be in a separate class / method?
+			const promises: Promise<boolean>[] = []
+			block_controller.blocks.forEach((block) => {
+				const m = this.previous_checks.get(block)
+				const n = this.current_checks.get(block)
+				const block_positions = block.getPositions()
+				const tiles = block_positions.map((p) => board.getTile(p.X, p.Z))
+
+				// Make sure blocks that were processed on previous checks don't get checked again.
+				// This prevents buttons from being activated repeatedly when a different block moves.
+				if (
+					(m && m.every((pos) => block_positions.includes(pos))) ||
+					(n && n.every((pos) => block_positions.includes(pos)))
+				) {
+					// print(`block was checked previously (${block.getPositions().join("), (")})`)
+					this.current_checks.set(block, block.getPositions())
+					return
+				}
+
+				// Block hasn't been checked before
+				this.current_checks.set(block, block_positions)
+				tiles.forEach((tile) => promises.push(tile.stepped(block)))
+			})
+
+			// Wait for all animations to finish
+			return Promise.fold(promises, (a, v) => a || v, false).then((res) => {
+				return res ? Promise.reject() : Promise.resolve()
+			})
+		}
+
+		print("Starting checks")
+		return Promise.retry(() => checkBoard(), math.huge).then(() => {
+			print("End checks")
+			this.previous_checks = this.current_checks
 		})
 	}
 

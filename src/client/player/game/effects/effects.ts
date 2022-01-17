@@ -1,11 +1,12 @@
 import { loli } from "@rbxts/loli-tween-animator"
+import { LoliTween } from "@rbxts/loli-tween-animator/out/loli"
 import { RunService, Workspace } from "@rbxts/services"
 import { Math } from "shared/utility/math"
 import { TweenPromise } from "shared/utility/tween"
 
 const EFFECTS_CONTAINER = Workspace
 
-namespace Effects {
+export namespace Effects {
 	export function blinkIn(instance: BasePart, parent: Instance): VoidPromise {
 		const glow_part = instance.Clone()
 		glow_part.Size = glow_part.Size.mul(1.01)
@@ -105,24 +106,20 @@ namespace Effects {
 		direction: Vector3,
 		angle: number,
 		speed: number
-	): VoidPromise {
+	): LoliTween {
 		const point = new CFrame(rotation_point)
 		const offset = point.Inverse().mul(instance.GetPivot())
 
 		// Tween block's rotation around rotation point
-		return loli
-			.to(0, {
-				goal: angle,
-				duration: angle / speed,
-				ease: "none",
-				onUpdate: (v) => {
-					const rotation = direction.mul(v)
-					const rotated_cframe = point.mul(CFrame.Angles(rotation.Z, rotation.Y, -rotation.X))
-					instance.PivotTo(rotated_cframe.mul(offset))
-				},
-			})
-			.then()
+		return loli.to(0, {
+			goal: angle,
+			duration: angle / speed,
+			ease: "none",
+			onUpdate: (v) => {
+				const rotation = direction.mul(v)
+				const rotated_cframe = point.mul(CFrame.Angles(rotation.Z, rotation.Y, -rotation.X))
+				instance.PivotTo(rotated_cframe.mul(offset))
+			},
+		})
 	}
 }
-
-export default Effects

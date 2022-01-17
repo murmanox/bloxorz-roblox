@@ -82,7 +82,7 @@ export class Tile implements ITile {
 	private can_toggle: boolean
 
 	private board: Board
-	constructor(board: Board, properties: TileProperties, dbg = false) {
+	constructor(board: Board, properties: TileProperties) {
 		this.board = board
 
 		const props = mergeDefaultProps(properties)

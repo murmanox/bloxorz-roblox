@@ -16,11 +16,11 @@ export function getBlockSize(rotation: Vector3, length: number): Vector3 {
 	return new Vector3(min1(size.X), min1(size.Y), min1(size.Z))
 }
 
-export function makeBlock(positions: Vector3[], size: Vector3, offset = v3.zero): BasePart {
+export function makeBlock(positions: Vector3[], rotation: Vector3, length: number): BasePart {
 	const part = Make("Part", {
-		Position: getBlockPosition(positions, offset),
+		Position: getBlockPosition(positions),
 		Anchored: true,
-		Size: new Vector3(min1(size.X), min1(size.Y), min1(size.Z)),
+		Size: getBlockSize(rotation, length),
 		CanCollide: true,
 		Material: Enum.Material.SmoothPlastic,
 		CustomPhysicalProperties: new PhysicalProperties(0.7, 0.2, 0, 1, 75),
