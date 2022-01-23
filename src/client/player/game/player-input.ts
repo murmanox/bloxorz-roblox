@@ -1,17 +1,16 @@
+import { Context } from "@rbxts/gamejoy"
 import Signal from "@rbxts/good-signal"
-import { UserInputService } from "@rbxts/services"
+import Object from "@rbxts/object-utils"
 import { settings } from "../settings/keybinds"
 
+const MOVEMENT_ACTIONS = settings.gamejoy.movement
+const noop = () => {}
+
 type MovementKeyName = "left" | "right" | "up" | "down"
-type KeyNames = keyof typeof settings.keybinds
 
 type OnMove = [action: MovementKeyName]
 type OnSwap = []
 type OnReset = []
-
-const move_actions = ["up", "down", "left", "right"] as const
-const getKeys = (action: KeyNames) => settings.keybinds[action].getKeys()
-const anyKeyPressed = (keys: Enum.KeyCode[]) => keys.some((key) => UserInputService.IsKeyDown(key))
 
 export class PlayerInput {
 	on_move = new Signal<OnMove>()
@@ -19,7 +18,13 @@ export class PlayerInput {
 	on_reset = new Signal<OnReset>()
 
 	constructor() {
-		UserInputService.InputBegan.Connect((input) => this.onKeyPress(input))
+		const context = new Context({ RunSynchronously: true, OnBefore: () => true })
+
+		context.Bind(settings.gamejoy.reset, () => this.on_reset.fire())
+		context.Bind(settings.gamejoy.swap, () => this.on_swap.fire())
+
+		// Bind movement actions with no callback. The actions will be checked later on update.
+		Object.values(MOVEMENT_ACTIONS).forEach((action) => context.Bind(action, noop))
 	}
 
 	/**
@@ -49,31 +54,13 @@ export class PlayerInput {
 		return this.on_reset.connect(callback)
 	}
 
-	private onKeyPress(input: InputObject) {
-		// check if swap key was pressed
-		const swap_pressed = anyKeyPressed(getKeys("swap"))
-		if (swap_pressed) {
-			this.on_swap.fire()
-		}
-
-		// check if reset key was pressed
-		const reset_pressed = anyKeyPressed(getKeys("reset"))
-		if (reset_pressed) {
-			this.on_reset.fire()
-		}
-	}
-
 	/**
 	 * Checks movement keys to see if any are being held
 	 */
-	public update(dt: number) {
-		// check if movement key is pressed
-		for (const action of move_actions) {
-			const pressed = anyKeyPressed(getKeys(action))
-			if (pressed) {
-				this.on_move.fire(action)
-				break
-			}
+	public checkMovement() {
+		const pressed = Object.entries(MOVEMENT_ACTIONS).find(([_, action]) => action.IsActive)
+		if (pressed) {
+			this.on_move.fire(pressed[0])
 		}
 	}
 }

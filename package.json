@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "rbxtsc -w --verbose"
+    "build": "rbxtsc -w --verbose",
+    "serve": "pnpx io-serve"
   },
   "keywords": [],
   "author": "",
@@ -19,6 +20,7 @@
   "dependencies": {
     "@rbxts/bin": "^1.2.6",
     "@rbxts/flipper": "^1.2.2",
+    "@rbxts/gamejoy": "^1.0.2",
     "@rbxts/good-signal": "github:murmanox/good-signal",
     "@rbxts/inspect": "^1.0.1",
     "@rbxts/janitor": "^1.1.3",
@@ -34,7 +36,9 @@
     "@rbxts/roact-rodux": "^0.2.2-ts.5",
     "@rbxts/roact-rodux-hooked": "^1.0.4",
     "@rbxts/rodux": "^3.0.0-ts.3",
+    "@rbxts/rust-classes": "^0.11.1",
     "@rbxts/services": "^1.2.0",
+    "@rbxts/signal": "^1.0.3",
     "@rbxts/t": "^2.2.1",
     "@rbxts/ts-remote": "^1.0.3",
     "@typescript-eslint/eslint-plugin": "^4.33.0",

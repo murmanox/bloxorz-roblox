@@ -4,6 +4,7 @@ specifiers:
   '@rbxts/bin': ^1.2.6
   '@rbxts/compiler-types': 1.2.7-types.1
   '@rbxts/flipper': ^1.2.2
+  '@rbxts/gamejoy': ^1.0.2
   '@rbxts/good-signal': github:murmanox/good-signal
   '@rbxts/inspect': ^1.0.1
   '@rbxts/janitor': ^1.1.3
@@ -19,7 +20,9 @@ specifiers:
   '@rbxts/roact-rodux': ^0.2.2-ts.5
   '@rbxts/roact-rodux-hooked': ^1.0.4
   '@rbxts/rodux': ^3.0.0-ts.3
+  '@rbxts/rust-classes': ^0.11.1
   '@rbxts/services': ^1.2.0
+  '@rbxts/signal': ^1.0.3
   '@rbxts/t': ^2.2.1
   '@rbxts/ts-remote': ^1.0.3
   '@rbxts/types': ^1.0.568
@@ -37,6 +40,7 @@ specifiers:
 dependencies:
   '@rbxts/bin': 1.2.6
   '@rbxts/flipper': 1.2.2
+  '@rbxts/gamejoy': 1.0.2_@rbxts+types@1.0.568
   '@rbxts/good-signal': github.com/murmanox/good-signal/ecb275dbd27066e2384e51c7da7e0de6ab685843
   '@rbxts/inspect': 1.0.1
   '@rbxts/janitor': 1.1.3
@@ -52,7 +56,9 @@ dependencies:
   '@rbxts/roact-rodux': 0.2.2-ts.5_efe250f712aa05b0d71d2eb623e546bd
   '@rbxts/roact-rodux-hooked': 1.0.4_455fa08a46320652bb4516906e995e0d
   '@rbxts/rodux': 3.0.0-ts.3
+  '@rbxts/rust-classes': 0.11.1
   '@rbxts/services': 1.2.0
+  '@rbxts/signal': 1.0.3_@rbxts+types@1.0.568
   '@rbxts/t': 2.2.1
   '@rbxts/ts-remote': 1.0.3
   '@typescript-eslint/eslint-plugin': 4.33.0_3289a875d95a672b97ebf589745c66ef
@@ -158,6 +164,18 @@ packages:
     resolution: {integrity: sha512-s47A7FUklP1ZQwi3V2VWXK1vU445U1ulvV0AAXQ1EKp+z6DkNu4DgYduR7luMNM9u6jli9elXMemsLlb81H3wg==}
     dev: false
 
+  /@rbxts/gamejoy/1.0.2_@rbxts+types@1.0.568:
+    resolution: {integrity: sha512-YWqK6QhVECGmxrAeLIcRmOO676d3gATcbwyBCfV3MAsrzANFkK4VzaWga889zwfWw8K7/LV4oeovH4WLRUIvfA==}
+    dependencies:
+      '@rbxts/bin': 1.2.6
+      '@rbxts/rust-classes': 0.11.1
+      '@rbxts/services': 1.2.0
+      '@rbxts/signal': 1.0.3_@rbxts+types@1.0.568
+      '@rbxts/t': 3.0.0
+    transitivePeerDependencies:
+      - '@rbxts/types'
+    dev: false
+
   /@rbxts/inspect/1.0.1:
     resolution: {integrity: sha512-O+fbpjl0iKWfVSILrgBRoZcCUzYSbRIOrgW8RrLWNBLFzoxIBu9uydx4RavYgT2RsmRm5zK2aM3MakEZ2z+jlQ==}
     dev: false
@@ -228,12 +246,28 @@ packages:
     resolution: {integrity: sha512-LrLowiF1YL5U+lQheCNMo8sbrSEoZAIlVFOGB7Edjein5TtZAeNgyJrhY5yFH5gAfJQzFRnZWVOxWFaMlD0GRg==}
     dev: false
 
+  /@rbxts/rust-classes/0.11.1:
+    resolution: {integrity: sha512-VWQ7ihp9NR8nl7/f8PTYLRJg+EIVsv/xSHTtEHiadoZsVuCVo9mlEQH57GyQRhK88zh5+fe8UDAlFfa1ZXTfbQ==}
+    dev: false
+
   /@rbxts/services/1.2.0:
     resolution: {integrity: sha512-GEnAGgRz/oFEfBCjr+UChO7D49c/l+Wgr2OHMkURBKbVAqGg7hVQbEs9PUr+9BuVx/8OlsqZ/cvrUYbwAyd60A==}
     dev: false
 
+  /@rbxts/signal/1.0.3_@rbxts+types@1.0.568:
+    resolution: {integrity: sha512-faFH5kVkQotZ2YzJhQ7Z12T9YkfV1O6y0V0V/I/RknBVAmefuIM8pSWj2AIEecOR6jSCtg0yZS8gNYKwfoopNA==}
+    peerDependencies:
+      '@rbxts/types': ^1.0.194
+    dependencies:
+      '@rbxts/types': 1.0.568
+    dev: false
+
   /@rbxts/t/2.2.1:
     resolution: {integrity: sha512-MoFLHRQdm1tpAviAVxgkQj/ktxtnGBund2HXQj5xRqgYUWuC3kYuLkctuxXiJHUd1o1JzfU/HvVHtZfpqp61tg==}
+    dev: false
+
+  /@rbxts/t/3.0.0:
+    resolution: {integrity: sha512-+nrmxT39AdJQ9KZXBNBehRnTEhVQo7L1Vapz521u9WHqCs5ZWR1oZmkNW5gmDCAp5LUpXNgC9oF3Oc2sDxiEaQ==}
     dev: false
 
   /@rbxts/ts-remote/1.0.3:
