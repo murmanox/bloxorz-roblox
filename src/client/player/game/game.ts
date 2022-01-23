@@ -5,15 +5,6 @@ import { Board, BoardState } from "./board/board"
 import { GameLogic } from "./game-logic"
 import { PlayerInput } from "./player-input"
 
-export enum GameState {
-	Unloaded = "Unloaded",
-	Loading = "Loading",
-	Waiting = "Waiting",
-	Moving = "Moving",
-	Win = "Win",
-	Lose = "Lose",
-}
-
 const config = game_config
 export class Game {
 	public player_input = new PlayerInput()
@@ -23,8 +14,6 @@ export class Game {
 	private current_level = 0 // get this from profileservice
 	public scale = config.scale
 
-	/** Unused, maybe remove? */
-	public state = GameState.Unloaded
 	public is_loaded = false
 	public win = false
 	public lose = false
@@ -77,14 +66,9 @@ export class Game {
 	}
 
 	private update(dt: number) {
-		if (this.win) {
-			// handle winning
-			return
-		}
-
 		// check if the game can accept input
 		if (this.is_loaded) {
-			this.player_input.update(dt)
+			this.player_input.checkMovement()
 		}
 	}
 }
