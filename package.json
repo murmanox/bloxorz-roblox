@@ -12,7 +12,7 @@
   "license": "ISC",
   "devDependencies": {
     "@rbxts/compiler-types": "1.2.7-types.1",
-    "@rbxts/types": "^1.0.568",
+    "@rbxts/types": "^1.0.571",
     "@typescript-eslint/parser": "^4.33.0",
     "eslint": "^7.32.0",
     "eslint-config-prettier": "^8.3.0"
@@ -20,7 +20,7 @@
   "dependencies": {
     "@rbxts/bin": "^1.2.6",
     "@rbxts/flipper": "^1.2.2",
-    "@rbxts/gamejoy": "^1.0.2",
+    "@rbxts/gamejoy": "^1.1.0",
     "@rbxts/good-signal": "github:murmanox/good-signal",
     "@rbxts/inspect": "^1.0.1",
     "@rbxts/janitor": "^1.1.3",
@@ -46,7 +46,7 @@
     "eslint-plugin-prettier": "^3.4.1",
     "prettier": "^2.5.1",
     "rbxts-transform-debug": "^1.0.0-ts4.5",
-    "typescript": "^4.5.4",
+    "typescript": "^4.5.5",
     "typescript-eslint": "^0.0.1-alpha.0"
   }
 }
