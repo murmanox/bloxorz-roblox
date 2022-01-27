@@ -1,10 +1,9 @@
-import { Context } from "@rbxts/gamejoy"
+import { MiddlewareAction } from "@rbxts/gamejoy/out/Actions/MiddlewareAction"
 import Signal from "@rbxts/good-signal"
-import Object from "@rbxts/object-utils"
 import { settings } from "../settings/keybinds"
 
-const MOVEMENT_ACTIONS = settings.gamejoy.movement
-const noop = () => {}
+const gamejoy = settings.gamejoy
+const MOVEMENT_ACTIONS = gamejoy.actions.movement
 
 type MovementKeyName = "left" | "right" | "up" | "down"
 
@@ -12,19 +11,33 @@ type OnMove = [action: MovementKeyName]
 type OnSwap = []
 type OnReset = []
 
+const modifierMiddleware = () => !gamejoy.actions.modifier.IsActive
+
 export class PlayerInput {
 	on_move = new Signal<OnMove>()
 	on_swap = new Signal<OnSwap>()
 	on_reset = new Signal<OnReset>()
 
+	private pressed: MovementKeyName[] = []
+
 	constructor() {
-		const context = new Context({ RunSynchronously: true, OnBefore: () => true })
+		// Bind 'reset' and 'swap' actions to context
+		gamejoy.context
+			.Bind(gamejoy.actions.reset, () => this.on_reset.fire())
+			.Bind(gamejoy.actions.swap, () => this.on_swap.fire())
 
-		context.Bind(settings.gamejoy.reset, () => this.on_reset.fire())
-		context.Bind(settings.gamejoy.swap, () => this.on_swap.fire())
+		// Bind movement actions
+		for (const [direction, action] of pairs(MOVEMENT_ACTIONS)) {
+			// Add action to pressed array when pressed
+			gamejoy.context.Bind(new MiddlewareAction(action, modifierMiddleware), () => {
+				this.pressed.unshift(direction)
+			})
 
-		// Bind movement actions with no callback. The actions will be checked later on update.
-		Object.values(MOVEMENT_ACTIONS).forEach((action) => context.Bind(action, noop))
+			// Remove action from pressed array when key is released
+			action.Released.Connect(() => {
+				this.pressed = this.pressed.filter((dir_string) => dir_string !== direction)
+			})
+		}
 	}
 
 	/**
@@ -58,9 +71,8 @@ export class PlayerInput {
 	 * Checks movement keys to see if any are being held
 	 */
 	public checkMovement() {
-		const pressed = Object.entries(MOVEMENT_ACTIONS).find(([_, action]) => action.IsActive)
-		if (pressed) {
-			this.on_move.fire(pressed[0])
+		if (this.pressed.size()) {
+			this.on_move.fire(this.pressed[0])
 		}
 	}
 }

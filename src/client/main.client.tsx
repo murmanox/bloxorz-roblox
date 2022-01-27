@@ -1,11 +1,15 @@
+import { Context } from "@rbxts/gamejoy"
+import { Action, Dynamic, Sequence } from "@rbxts/gamejoy/out/Actions"
 import { Janitor } from "@rbxts/janitor"
 import Roact from "@rbxts/roact"
 import { Players, StarterGui, Workspace } from "@rbxts/services"
 import { BoardState } from "./player/game/board/board"
 import { scaleCamera } from "./player/game/camera"
 import { Game } from "./player/game/game"
+import { settings } from "./player/settings/keybinds"
 import App from "./user-interface/components/app"
 import { store } from "./user-interface/store"
+import { TOGGLE_DISPLAY_KEYS_PRESSED, TOGGLE_DISPLAY_STATE } from "./user-interface/store/debug/types"
 import { ADD_TIME_PLAYED } from "./user-interface/store/stats/types"
 
 //#region Interface
@@ -34,15 +38,6 @@ Roact.mount(element, player_gui)
 //#endregion
 
 const app = new Game()
-
-// TODO: dispatch inside game class
-// app.events.player.moved.connect(() => {
-// 	// update local counter
-// 	store.dispatch({ type: ADD_MOVEMENT })
-
-// 	// tell server to update stats
-// 	PlayerEvents.Moved.fireServer()
-// })
 
 interface JanitorProps {
 	camera: RBXScriptConnection
@@ -76,3 +71,9 @@ store.changed.connect((state, old_state) => {
 		app.stopGame()
 	}
 })
+
+const gamejoy = settings.gamejoy
+
+gamejoy.context
+	.Bind(gamejoy.actions.debug.state, () => store.dispatch({ type: TOGGLE_DISPLAY_STATE }))
+	.Bind(gamejoy.actions.debug.keys, () => store.dispatch({ type: TOGGLE_DISPLAY_KEYS_PRESSED }))

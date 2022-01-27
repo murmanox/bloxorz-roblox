@@ -20,7 +20,7 @@
   "dependencies": {
     "@rbxts/bin": "^1.2.6",
     "@rbxts/flipper": "^1.2.2",
-    "@rbxts/gamejoy": "^1.1.0",
+    "@rbxts/gamejoy": "^1.1.1",
     "@rbxts/good-signal": "github:murmanox/good-signal",
     "@rbxts/inspect": "^1.0.1",
     "@rbxts/janitor": "^1.1.3",
