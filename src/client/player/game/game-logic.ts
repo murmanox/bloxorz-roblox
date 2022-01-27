@@ -1,3 +1,5 @@
+import { store } from "client/user-interface/store"
+import { ADD_GAME_MOVEMENT } from "client/user-interface/store/game/types"
 import { dbg } from "shared/utility/debug"
 import { MoveDirection } from "types/interfaces/block-types"
 import { Game } from "./game"
@@ -19,12 +21,17 @@ export class GameLogic {
 		this.move_promise = controller
 			.move(direction) // move block
 
+			// Increase move counter
+			.then(() => store.dispatch({ type: ADD_GAME_MOVEMENT }))
+
 			// check the board
 			.then(() => this.app.board.check())
 
 			// handle wins and losses
 			.then(() => this.handleWinsAndLosses())
-			.finally(() => (this.moving = false)) // Use finally here so player can still move if there's an error
+
+			// End of move
+			.finally(() => (this.moving = false))
 	}
 
 	private handleWinsAndLosses() {
