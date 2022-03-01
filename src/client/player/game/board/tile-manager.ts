@@ -4,7 +4,8 @@ import { LevelConfig } from "shared/config/levels/level-types"
 import { inRange } from "shared/utility/math"
 import { TileMap } from "types/interfaces/level-types"
 import { ITile, TileProperties } from "types/interfaces/tile-types"
-import { empty_tile, Tile } from "../tiles/tile"
+import { EMPTY_TILE } from "../tiles/empty-tile"
+import { Tile } from "../tiles/tile"
 import { Board } from "./board"
 
 const wooden: TileProperties = { kind: "tile", fragile: true }
@@ -35,7 +36,7 @@ export class TileManager {
 
 		// x or y is out of range of the board
 		if (!inRange(x, 0, size.X - 1) || !inRange(y, 0, size.Y - 1)) {
-			return empty_tile
+			return EMPTY_TILE
 		}
 
 		const index = size.X * y + x
@@ -54,7 +55,7 @@ export class TileManager {
 
 				// check if tile is valid
 				if (tile === undefined) {
-					tiles.push(empty_tile)
+					tiles.push(EMPTY_TILE)
 					continue
 				}
 

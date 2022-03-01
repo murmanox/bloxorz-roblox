@@ -150,11 +150,3 @@ export class Tile implements ITile {
 		return this.is_end && block.isStanding()
 	}
 }
-
-export const empty_tile: ITile = {
-	activate: (action: "toggle" | "activate" | "deactivate" | undefined): void => {},
-	stepped: (block: Block): Promise<boolean> => Promise.resolve(false),
-	toggle: (value: boolean): void => {},
-	isLosingPosition: (block: Block): boolean => true,
-	isWinningPosition: (block: Block): boolean => false,
-}
