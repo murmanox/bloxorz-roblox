@@ -7,16 +7,11 @@
 		"sourceType": "module",
 		"project": "./tsconfig.json"
 	},
-	"plugins": [
-		"no-autofix",
-		"prettier"
-	],
-	"extends": [
-		"prettier"
-	],
+	"plugins": ["no-autofix", "prettier"],
+	"extends": ["prettier"],
 	"rules": {
-		"prettier/prettier": "off",
-		"@typescript-eslint/no-explicit-any": ["off", {"ignoreRestArgs": true}],
+		"prettier/prettier": ["warn", { "endOfLine": "auto", "printWidth": 100 }],
+		"@typescript-eslint/no-explicit-any": ["off", { "ignoreRestArgs": true }],
 		"prefer-const": "off",
 		"no-autofix/prefer-const": "warn",
 		"@typescript-eslint/no-empty-function": ["off", { "allow": ["constructors"] }]
