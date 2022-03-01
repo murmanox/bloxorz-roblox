@@ -9,10 +9,6 @@ class EmptyTile implements ITile {
 		return Promise.resolve(false)
 	}
 
-	public toggle(value: boolean): void {
-		return
-	}
-
 	public isLosingPosition(block: IBlock): boolean {
 		return true
 	}
@@ -21,7 +17,7 @@ class EmptyTile implements ITile {
 		return false
 	}
 
-	public activate(action: "toggle" | "activate" | "deactivate" ): void {
+	public activate(action: "toggle" | "activate" | "deactivate"): void {
 		return
 	}
 }
