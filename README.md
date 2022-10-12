@@ -12,3 +12,6 @@ https://youtu.be/9WMtr6o_bVc
 
 Early UI in HoarceKat:
 https://youtu.be/sI7SfEvH5Rc
+
+![bloxorz ui](https://user-images.githubusercontent.com/53511594/195245003-b8e01c2b-8873-4186-9601-13a32e2fc4ef.png)
+![bloxorz-gameplay](https://user-images.githubusercontent.com/53511594/195245013-02c8246f-0577-4349-a89c-2e43991c2244.png)
